@@ -1,0 +1,14 @@
+requirejs.config({
+  paths: {
+    'inflection': '../vendor/inflection',
+    'when': '../vendor/when',
+    'underscore': '../vendor/underscore',
+    'jquery': '../vendor/jquery'
+  },
+
+  shim: {
+    'inflection': { exports: 'InflectionJS' },
+    'underscore': { exports: '_' },
+    'jquery': { exports: '$' }
+  }
+});

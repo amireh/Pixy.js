@@ -1,17 +1,12 @@
 /* global requirejs: false, jasmine: false */
 requirejs.config({
-  baseUrl: './',
-  map: {
-    '*': {
-      'test': '../test'
-    }
-  },
+  baseUrl: './lib/pixy',
 
   paths: {
-    'inflection': '../vendor/inflection',
-    'when': '../vendor/when',
-    'underscore': '../vendor/underscore',
-    'jquery': '../vendor/jquery'
+    'inflection': '../../vendor/inflection',
+    'when': '../../vendor/when',
+    'underscore': '../../vendor/underscore',
+    'jquery': '../../vendor/jquery'
   },
 
   shim: {
@@ -20,7 +15,7 @@ requirejs.config({
     'jquery': { exports: '$' }
   },
 
-  deps: [ 'main' ],
+  deps: [ './main' ],
 
   callback: function() {
     // Avoid infinite loop in the pretty printer when trying to print objects with

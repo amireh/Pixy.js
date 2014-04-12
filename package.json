@@ -1,7 +1,7 @@
 {
   "name": "Pixy",
   "description": "Fork of Backbone.js that powers Pibi.js.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "homepage": "https://github.com/amireh/Pixy.js",
   "author": {
     "name": "Ahmad Amireh",
@@ -9,8 +9,7 @@
     "url": "http://www.algollabs.com"
   },
   "licenses": [],
-  "keywords": [
-  ],
+  "keywords": [],
   "repository": {
     "type": "git",
     "url": "git://github.com/amireh/Pixy.js"
@@ -20,7 +19,7 @@
   },
   "main": "main.js",
   "scripts": {
-	  "default": "grunt",
+    "default": "grunt",
     "test": "grunt test"
   },
   "private": false,
@@ -44,8 +43,8 @@
     "glob": "x"
   },
   "dependencies": {
-		"lodash": "1.2.x",
-	 	"when": "2.7.x",
-		"jquery": "2.x"	
-	}
+    "lodash": "1.2.x",
+    "when": "2.7.x",
+    "jquery": "2.x"
+  }
 }

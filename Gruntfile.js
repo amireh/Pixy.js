@@ -38,6 +38,7 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-tagrelease');
   grunt.loadNpmTasks('grunt-jsvalidate');
   grunt.loadNpmTasks('grunt-jsduck');
+  grunt.loadNpmTasks('grunt-string-replace');
 
   // Please don't rename these, they're used by `bin/build`:
   // ---

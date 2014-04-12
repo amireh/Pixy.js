@@ -1,10 +1,11 @@
 module.exports = {
   compile: {
     options: {
-      baseUrl: 'src/js',
-      out: 'www/dist/pibi.js',
-      mainConfigFile: 'src/js/main.js',
-      optimize: 'uglify',
+      baseUrl: './lib',
+      out: 'build/pixy.js',
+      mainConfigFile: '.requirejs',
+      // optimize: 'uglify',
+      optimize: 'none',
 
       removeCombined:           false,
       inlineText:               true,
@@ -36,18 +37,24 @@ module.exports = {
         }
       },
 
-      pragmasOnSave: {
-        excludeHbsParser:   true,
-        excludeHbs:         true,
-        excludeAfterBuild:  true
-      },
-
       pragmas: {
         production: true
       },
 
-      name: 'main',
-      include: [ 'main' ]
+      paths: {
+        'underscore': 'empty:',
+        'inflection': 'empty:',
+        'when': 'empty:',
+        'jquery': 'empty:'
+      },
+
+      shim: { pixy: {} },
+      rawText: {
+        'pixy': 'define(["pixy/main"], function (Pixy) { return Pixy; });'
+      },
+
+      name: 'pixy',
+      deps: [ 'pixy/main' ]
     }
   }
 };
