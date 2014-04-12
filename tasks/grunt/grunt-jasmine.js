@@ -12,7 +12,7 @@ module.exports = {
       deferHelpers: true
     },
 
-    keepRunner: false,
+    keepRunner: true,
 
     version: '1.3.1',
 
