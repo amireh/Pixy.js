@@ -32,11 +32,8 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-jasmine');
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-requirejs');
-  grunt.loadNpmTasks('grunt-contrib-less');
-  grunt.loadNpmTasks('grunt-contrib-concat');
   grunt.loadNpmTasks('grunt-bumpup');
   grunt.loadNpmTasks('grunt-tagrelease');
-  grunt.loadNpmTasks('grunt-jsvalidate');
   grunt.loadNpmTasks('grunt-jsduck');
   grunt.loadNpmTasks('grunt-string-replace');
 

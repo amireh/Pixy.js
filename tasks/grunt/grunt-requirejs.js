@@ -4,8 +4,8 @@ module.exports = {
       baseUrl: './lib',
       out: 'build/pixy.js',
       mainConfigFile: '.requirejs',
-      // optimize: 'uglify',
-      optimize: 'none',
+      optimize: 'uglify2',
+      // optimize: 'none',
 
       removeCombined:           false,
       inlineText:               true,

@@ -1,7 +1,5 @@
 module.exports = {
-  src: [
-    'src/js/main.js'
-  ],
+  src: [],
   options : {
     timeout: 10000,
     outfile: 'tests.html',
@@ -14,17 +12,12 @@ module.exports = {
       deferHelpers: true
     },
 
-    keepRunner: true,
+    keepRunner: false,
 
     version: '1.3.1',
 
     styles: [],
-
-    helpers: [
-      'test/support/jasmine/*.js',
-      'test/support/*.js',
-      'test/helpers/*.js'
-    ],
+    helpers: [],
 
     specs: [
       'test/**/*_test.js'
