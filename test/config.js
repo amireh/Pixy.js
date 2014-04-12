@@ -2,17 +2,25 @@
 requirejs.config({
   baseUrl: './lib/pixy',
 
+  map: {
+    '*': {
+      'test': '../../test'
+    }
+  },
+
   paths: {
     'inflection': '../../vendor/inflection',
     'when': '../../vendor/when',
     'underscore': '../../vendor/underscore',
-    'jquery': '../../vendor/jquery'
+    'jquery': '../../vendor/jquery',
+    'store': '../../vendor/store',
   },
 
   shim: {
     'inflection': { exports: 'InflectionJS' },
     'underscore': { exports: '_' },
-    'jquery': { exports: '$' }
+    'jquery': { exports: '$' },
+    'store': { exports: 'store' },
   },
 
   deps: [ './main' ],

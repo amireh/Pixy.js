@@ -17,7 +17,12 @@ module.exports = {
     version: '1.3.1',
 
     styles: [],
-    helpers: [],
+
+    helpers: [
+      'test/support/jasmine/*.js',
+      'test/support/*.js',
+      'test/helpers/*.js'
+    ],
 
     specs: [
       'test/**/*_test.js'
