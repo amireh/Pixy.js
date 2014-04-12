@@ -280,7 +280,7 @@ function(_, Pixy, Events, extend, Util) {
       if (attrs && options.wait) {
         this.attributes = _.extend({}, attributes, attrs);
       }
-      else if (attrs && this.isNew() && Pixy.journalled()) {
+      else if (attrs && this.isNew()) {
         this.attributes = _.extend({}, attributes, attrs);
       }
 
@@ -427,8 +427,6 @@ function(_, Pixy, Events, extend, Util) {
   });
 
   Model.extend = extend;
-
-  Pixy.Model = Model;
 
   return Model;
 });

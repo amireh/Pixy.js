@@ -8,18 +8,19 @@ requirejs.config({
   },
 
   paths: {
+    'inflection': '../vendor/inflection',
     'when': '../vendor/when',
     'underscore': '../vendor/underscore',
     'jquery': '../vendor/jquery'
   },
 
   shim: {
+    'inflection': { exports: 'InflectionJS' },
     'underscore': { exports: '_' },
     'jquery': { exports: '$' }
   },
 
-  deps: [
-  ],
+  deps: [ 'main' ],
 
   callback: function() {
     // Avoid infinite loop in the pretty printer when trying to print objects with

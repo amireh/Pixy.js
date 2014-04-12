@@ -5,6 +5,7 @@
  */
 define([
   'underscore',
+  'inflection',
   './packages/namespace',
   './packages/object',
   './packages/model',
@@ -14,6 +15,8 @@ define([
   './packages/router',
   './packages/history',
   './packages/controller',
+  './packages/mixins/logger',
+  './packages/registry',
   // './packages/sync',
   // './packages/plugin_manager',
   // './packages/plugins/registry',
@@ -24,6 +27,7 @@ define([
 ],
 function(
   _,
+  InflectionJS,
   Pixy,
   PixyObject,
   PixyModel,
@@ -32,7 +36,9 @@ function(
   PixyView,
   PixyRouter,
   PixyHistory,
-  PixyController
+  PixyController,
+  PixyLogger,
+  PixyRegistry
   // PixySync,
   // PluginManager,
   // RegistryPlugin,
@@ -42,8 +48,6 @@ function(
   // JournallingPlugin
   ) {
 
-  console.debug(Pixy)
-
   Pixy.Object = PixyObject;
   Pixy.Model = PixyModel;
   Pixy.DeepModel = PixyDeepModel;
@@ -52,15 +56,18 @@ function(
   Pixy.Router = PixyRouter;
   Pixy.Controller = PixyController;
 
+  // Singletons
+  Pixy.Registry = new PixyRegistry();
+
   // Install the Pixy plugins we'll be using.
   // Pixy.PluginManager = new PluginManager();
   // Pixy.PluginManager.install(new LoggerPlugin());
 
-  // _.extend(Pixy.Object.prototype,     Pixy.Logger);
-  // _.extend(Pixy.Model.prototype,      Pixy.Logger);
-  // _.extend(Pixy.Collection.prototype, Pixy.Logger);
-  // _.extend(Pixy.View.prototype,       Pixy.Logger);
-  // _.extend(Pixy.Router.prototype,     Pixy.Logger);
+  _.extend(Pixy.Object.prototype,     PixyLogger);
+  _.extend(Pixy.Model.prototype,      PixyLogger);
+  _.extend(Pixy.Collection.prototype, PixyLogger);
+  _.extend(Pixy.View.prototype,       PixyLogger);
+  _.extend(Pixy.Router.prototype,     PixyLogger);
 
   // Pixy.PluginManager.install(new InheritsPlugin());
   // Pixy.PluginManager.install(new RegistryPlugin());

@@ -5,7 +5,8 @@ define([
   './util/extend',
   './events',
   './util',
-], function(_, Pixy, Model, extend, Events, Util) {
+  './util/wrap'
+], function(_, Pixy, Model, extend, Events, Util, wrap) {
   var array = [];
   var push = array.push;
   var slice = array.slice;
@@ -175,13 +176,23 @@ define([
     // Useful for bulk operations and optimizations.
     reset: function(models, options) {
       options || (options = {});
+
       for (var i = 0, l = this.models.length; i < l; i++) {
         this._removeReference(this.models[i]);
       }
+
       options.previousModels = this.models;
       this._reset();
-      this.add(models, _.extend({silent: true}, options));
-      if (!options.silent) this.trigger('reset', this, options);
+      this.add(models, _.extend({ silent: true }, options));
+
+      if (!options.silent) {
+        this.trigger('reset', this, options);
+      }
+
+      this.forEach(function(model) {
+        model.trigger('sync', model);
+      });
+
       return this;
     },
 
@@ -247,6 +258,15 @@ define([
       return this.where(attrs, true);
     },
 
+    /**
+     * Returns the first model that is not persistent.
+     */
+    findNew: function() {
+      return this.find(function(model) {
+        return model.isNew();
+      });
+    },
+
     // Force the collection to re-sort itself. You don't need to call this under
     // normal circumstances, as the set will maintain sort order as each item
     // is added.
@@ -290,21 +310,35 @@ define([
         options.parse = true;
       }
 
-      var success     = options.success,
-          error       = options.error,
-          collection  = this;
+      options.xhrSuccess = _.bind(this.parseLinkPagination, this);
 
-      options.success = function(resp) {
+      options.success = wrap(options.success, function(success, resp) {
         var method = options.reset ? 'reset' : 'set';
-        collection[method](resp, options);
-        if (success) success(collection, resp, options);
-        // collection.trigger('sync', collection, resp, options);
-        collection.trigger('fetch', collection, resp, options);
-      };
+        this[method](resp, options);
+
+        success(this, resp, options);
+
+        this.trigger('fetch', this, resp, options);
+      }, this);
 
       Util.wrapError(this, options);
 
       return this.sync('read', this, options);
+    },
+
+    fetchNext: function(options) {
+      var that = this;
+
+      this.meta.currentPage = this.meta.nextPage;
+
+      options = _.extend({}, options, {
+        xhrSuccess: _.bind(this.parseLinkPagination, this)
+      });
+
+      return this.sync('read', this, options).then(function(models) {
+        that.add(models, { parse: true });
+        that.meta.remainder = that.meta.totalCount - that.length;
+      });
     },
 
     // Create a new instance of a model in this collection. Add the model to the
@@ -382,10 +416,84 @@ define([
 
     toString: function() {
       return [ this.name, this.id || this.cid ].join('#');
+    },
+
+    parseLinkPagination: function(resp, status, jqXHR) {
+      var nextLink;
+      var linkHeader = jqXHR.getResponseHeader('Link');
+      var meta = {};
+      var extractLinks = function(link) {
+        function getMatches(string, regex) {
+          var matches = [];
+          var match;
+
+          while (match = regex.exec(string)) {
+            matches.push({
+              rel: match[2],
+              href: match[1],
+              page: parseInt(/page=(\d+)/.exec(match[1])[1], 10)
+            });
+          }
+
+          return matches;
+        }
+
+        var links = getMatches(link, RegExp('<([^>]+)>; rel="([^"]+)",?\s*', 'g'));
+        return links;
+      };
+
+      meta = {
+        link: extractLinks(linkHeader),
+        totalCount: parseInt(jqXHR.getResponseHeader('X-Total-Count'), 10)
+      };
+
+      nextLink = _.find(meta.link, { rel: 'next' });
+
+      meta.perPage = parseInt((/per_page=(\d+)/.exec(linkHeader) || [])[1] || 0, 10);
+      meta.hasMore = !!nextLink;
+      meta.remainder = meta.totalCount - this.models.length;
+
+      if (nextLink) {
+        meta.nextPage = nextLink.page;
+      }
+
+      return this.meta = meta;
     }
   });
 
   Collection.extend = extend;
+
+  // Underscore methods that we want to implement on the Collection.
+  // 90% of the core usefulness of Pixy Collections is actually implemented
+  // right here:
+  var methods = ['forEach', 'each', 'map', 'collect', 'reduce', 'foldl',
+    'inject', 'reduceRight', 'foldr', 'find', 'detect', 'filter', 'select',
+    'reject', 'every', 'all', 'some', 'any', 'include', 'contains', 'invoke',
+    'max', 'min', 'toArray', 'size', 'first', 'head', 'take', 'initial', 'rest',
+    'tail', 'drop', 'last', 'without', 'indexOf', 'shuffle', 'lastIndexOf',
+    'isEmpty', 'chain'];
+
+  // Mix in each Underscore method as a proxy to `Collection#models`.
+  _.each(methods, function(method) {
+    Collection.prototype[method] = function() {
+      var args = slice.call(arguments);
+      args.unshift(this.models);
+      return _[method].apply(_, args);
+    };
+  });
+
+  // Underscore methods that take a property name as an argument.
+  var attributeMethods = ['groupBy', 'countBy', 'sortBy'];
+
+  // Use attributes instead of properties.
+  _.each(attributeMethods, function(method) {
+    Collection.prototype[method] = function(value, context) {
+      var iterator = _.isFunction(value) ? value : function(model) {
+        return model.get(value);
+      };
+      return _[method](this.models, iterator, context);
+    };
+  });
 
   return Collection;
 });
