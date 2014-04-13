@@ -51,4 +51,32 @@ describe('Util::extend', function() {
     expect(a).toEqual(true);
     expect(b).toEqual(true);
   });
+
+  it("should inherit parent's mixins", function() {
+    var a, b, c, d;
+    var Mixin1 = {
+      prop1: function() {},
+      __initialize__: function() {
+        a = true;
+      }
+    };
+    var Mixin2 = {
+      __initialize__: function() {
+        b = true;
+      },
+      prop2: function() {}
+    };
+
+    var Parent = Pixy.Model.extend(Mixin1, {
+      initialize: function() {
+        c = true;
+      },
+      myProp: function() {}
+    });
+
+    var Child = Parent.extend();
+
+    expect(Child.prototype.__mixinInitializers__.length).toEqual(1);
+    expect(Pixy.Model.prototype.__mixinInitializers__).toBeFalsy();
+  });
 });
