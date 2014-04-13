@@ -337,7 +337,6 @@ define([ 'store' ], function(store) {
         spyOn(o, 'updateCacheEntry');
         o.addCacheListeners();
 
-        console.log('- - - spec -- - -')
         o.set({
           fruit: 'apple'
         }, { silent: true });
