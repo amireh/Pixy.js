@@ -1,9 +1,14 @@
 module.exports = {
   options: {
-    nospawn: true
+    nospawn: false
   },
   scripts: {
     files: [ 'lib/**/*.js' ],
-    tasks: [ 'build' ]
+    tasks: [ 'test', 'build' ]
+  },
+
+  tests: {
+    files: [ 'test/**/*.js' ],
+    tasks: [ 'test' ]
   }
 };

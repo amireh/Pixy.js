@@ -2,14 +2,14 @@ module.exports = {
   tests: {
     options: {
       keepalive: false,
-      port: 8003
+      port: 10113
     }
   },
 
   docs: {
     options: {
       keepalive: true,
-      port: 8001,
+      port: 10114,
       base: "doc"
     }
   },
@@ -17,7 +17,7 @@ module.exports = {
   browser_tests: {
     options: {
       keepalive: true,
-      port: 8002
+      port: 10115
     }
   }
 };
