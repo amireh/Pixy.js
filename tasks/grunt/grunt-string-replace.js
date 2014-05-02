@@ -1,7 +1,7 @@
 module.exports = {
   version: {
     files: {
-      'packages/namespace.js': 'packages/namespace.js'
+      'lib/pixy/packages/namespace.js': 'lib/pixy/packages/namespace.js'
     },
     options: {
       replacements: [{
