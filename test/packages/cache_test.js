@@ -167,7 +167,8 @@ define([ 'store' ], function(store) {
 
         o.fetch({
           useCache: true
-        }).otherwise(function() {
+        }).catch(function() {
+          console.debug('woops, ')
           return o.fetch({ useCache: false });
         }).shouldFulfill(function() {
           expect(o.getCacheEntry).toHaveBeenCalled();

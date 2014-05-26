@@ -1,7 +1,7 @@
 Factories = (function(require) {
   var Factories = {};
 
-  require([ 'main' ], function(Pixy) {
+  require([ 'pixy/main' ], function(Pixy) {
     Factories.Listener = Pixy.Model.extend({
       a: function() {},
       b: function() {}

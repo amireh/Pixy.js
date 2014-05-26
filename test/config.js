@@ -1,31 +1,23 @@
 /* global requirejs: false, jasmine: false */
 requirejs.config({
-  baseUrl: './lib/pixy',
+  baseUrl: '../lib',
 
   map: {
     '*': {
+      'packages': 'pixy/packages',
       'test': '../../test'
     }
   },
 
   paths: {
-    'inflection': '../../vendor/inflection',
-    'when': '../../vendor/when',
-    'underscore': '../../vendor/underscore',
-    'jquery': '../../vendor/jquery',
     'store': '../../vendor/store',
+    'rsvp/utils': '../../vendor/rsvp'
   },
 
-  shim: {
-    'inflection': { exports: 'InflectionJS' },
-    'underscore': { exports: '_' },
-    'jquery': { exports: '$' },
-    'store': { exports: 'store' },
-  },
-
-  deps: [ './main' ],
+  deps: [ 'pixy/main' ],
 
   callback: function() {
+    this.PIXY_TEST = true;
     // Avoid infinite loop in the pretty printer when trying to print objects with
     // circular references.
     jasmine.MAX_PRETTY_PRINT_DEPTH = 3;

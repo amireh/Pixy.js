@@ -1,6 +1,6 @@
 /* global jasmine:false */
 
-require([ 'when' ], function(when) {
+require([ 'when', 'rsvp' ], function(when, RSVP) {
   var promiseDescription;
   var promiseDelivered;
 
@@ -25,7 +25,9 @@ require([ 'when' ], function(when) {
    * We have to hack into the prototype of When::Promise to add the ability to
    * chain our promise-related jasmine helpers for a very convenient interface.
    */
-  var promisePrototype = Object.getPrototypeOf(when.promise());
+  // var promisePrototype = Object.getPrototypeOf(when.promise(function() {}));
+  // var promisePrototype = Object.getPrototypeOf(RSVP.Promise);
+  var promisePrototype = RSVP.Promise.prototype;
 
   /**
    * @private
@@ -46,7 +48,7 @@ require([ 'when' ], function(when) {
    *
    * @param  {Function} callback
    *         The spec expectations callback (to be called in in promise.then()
-   *         or promise.otherwise() contexts.)
+   *         or promise.catch() contexts.)
    *
    * @param  {jasmine.Spec/Object} thisArg
    *         The current spec, so the user can normally use any spec instance
@@ -105,7 +107,7 @@ require([ 'when' ], function(when) {
 
     promiseDescription = operation;
 
-    promise.ensure(function() {
+    promise.finally(function() {
       console.debug(
         'SPEC[' + currentSpec.description + ']: ' +
         'promise "' + operation + '" has been delivered.');
@@ -149,7 +151,7 @@ require([ 'when' ], function(when) {
    *     it('should fulfill a service', function() {
    *       myObject.doService().then(function() {
    *         expect(myObject.serviceResult).toBeTruthy();
-   *       }).otherwise(function() {
+   *       }).catch(function() {
    *         // ...
    *       }).andWait('MyObject to perform the service X.');
    *     });
@@ -186,7 +188,7 @@ require([ 'when' ], function(when) {
 
     return this.then(function(rc) {
       expect(that).toHaveBeenRejected(rc);
-    }).otherwise(function() {
+    }).catch(function() {
       captureStackTrace(expectationsCallback, this, arguments);
     });
   };
@@ -219,8 +221,9 @@ require([ 'when' ], function(when) {
     var that = this;
 
     return this.then(function() {
+      console.debug('jasmine: promise fulfilled with:', arguments);
       captureStackTrace(expectationsCallback, this, arguments);
-    }).otherwise(function(error) {
+    }).catch(function(error) {
       expect(that).toHaveBeenFulfilled([ error, parsePromiseException(that) ]);
     });
   };

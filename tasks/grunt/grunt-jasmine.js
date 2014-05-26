@@ -8,7 +8,7 @@ module.exports = {
 
     template: require('grunt-template-jasmine-requirejs'),
     templateOptions: {
-      requireConfigFile: [ 'test/config.js' ],
+      requireConfigFile: [ '.requirejs', 'test/config.js' ],
       deferHelpers: true
     },
 

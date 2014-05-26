@@ -41,6 +41,7 @@
   "dependencies": {
     "lodash": "1.2.x",
     "when": "2.7.x",
-    "jquery": "2.x"
+    "jquery": "2.x",
+    "react": "0.10.x"
   }
 }

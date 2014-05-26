@@ -1,14 +1,19 @@
 requirejs.config({
   paths: {
     'inflection': '../vendor/inflection',
-    'when': '../vendor/when',
     'underscore': '../vendor/underscore',
-    'jquery': '../vendor/jquery'
+    'jquery': '../vendor/jquery',
+    'react': '../vendor/react-0.10.0',
+    'route-recognizer': '../vendor/route-recognizer',
+    'router': '../vendor/router.amd',
+    'rsvp': '../vendor/rsvp',
+    'when': '../vendor/when-shim'
   },
 
   shim: {
     'inflection': { exports: 'InflectionJS' },
     'underscore': { exports: '_' },
-    'jquery': { exports: '$' }
+    'jquery': { exports: '$' },
+    'react': { exports: 'React' }
   }
 });
