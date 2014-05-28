@@ -44,7 +44,6 @@ module.exports = {
       paths: {
         'underscore': 'empty:',
         'inflection': 'empty:',
-        // 'when': 'empty:',
         'jquery': 'empty:',
         'react': 'empty:'
       },
