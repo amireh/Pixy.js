@@ -23,7 +23,7 @@ require([ 'packages/dispatcher', 'when', 'rsvp' ], function(Dispatcher, when, RS
         Dispatcher.register(callback);
         Dispatcher.dispatch('someAction', {
           foo: 'bar'
-        }).shouldResolve(function() {
+        }).promise.shouldResolve(function() {
           expect(callback.called).toBeTruthy();
         }).andWait('Payload to be dispatched');
       });
@@ -32,7 +32,7 @@ require([ 'packages/dispatcher', 'when', 'rsvp' ], function(Dispatcher, when, RS
         var callback = sinon.stub();
 
         Dispatcher.register(callback);
-        Dispatcher.dispatch('some_action').shouldReject(function() {
+        Dispatcher.dispatch('some_action').promise.shouldReject(function() {
           expect(callback.called).toBeFalsy();
         }).andWait('Payload to be dispatched');
       });
