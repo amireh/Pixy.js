@@ -1,5 +1,5 @@
 define([ 'router', 'when' ], function(Router, when) {
-  describe('Router.js', function() {
+  xdescribe('Router.js', function() {
     it('should work', function() {
       var router = new Router['default']();
       var myHandlers = {};

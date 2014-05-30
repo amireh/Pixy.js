@@ -1,4 +1,4 @@
-describe('Pixy.Router', function() {
+xdescribe('Pixy.Router', function() {
   describe('construction', function() {
     it('should create', function() {
       expect(function() {

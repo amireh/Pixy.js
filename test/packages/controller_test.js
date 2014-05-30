@@ -1,4 +1,4 @@
-describe('Pixy::Controller', function() {
+xdescribe('Pixy::Controller', function() {
 
   afterEach(function() {
     try {
