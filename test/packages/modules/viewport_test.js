@@ -1,4 +1,4 @@
-describe('Core::Viewport', function() {
+xdescribe('Core::Viewport', function() {
   var Viewport = Pixy.Viewport;
 
   beforeEach(function() {

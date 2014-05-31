@@ -1,4 +1,4 @@
-describe('Pixy::View', function() {
+xdescribe('Pixy::View', function() {
   describe('construction', function() {
     it('should enqueue event handlers on #render and #remove', function() {
       var view = new Pixy.View();

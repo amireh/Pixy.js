@@ -59,16 +59,6 @@ define([ 'store' ], function(store) {
         expect( o.getCacheEntry ).toBeTruthy();
       });
 
-      it('should not cache Views', function() {
-        var o = new (Pixy.View.extend({
-          cache: {
-            key: 'spec_model'
-          }
-        }));
-
-        expect( o.getCacheEntry ).toBeFalsy();
-      });
-
       it('should cache DeepModels', function() {
         var o = new (Pixy.DeepModel.extend({
           cache: {
