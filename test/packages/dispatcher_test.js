@@ -1,4 +1,4 @@
-require([ 'packages/dispatcher', 'when', 'rsvp' ], function(Dispatcher, when, RSVP) {
+require([ 'pixy/core/dispatcher', 'when', 'rsvp' ], function(Dispatcher, when, RSVP) {
   window.when = when;
   window.RSVP = RSVP;
   describe('Core::Dispatcher', function() {

@@ -4,7 +4,7 @@ requirejs.config({
 
   map: {
     '*': {
-      'packages': 'pixy/packages',
+      'pixy': '../lib/pixy',
       'test': '../../test'
     }
   },

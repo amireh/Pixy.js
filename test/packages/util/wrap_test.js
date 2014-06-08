@@ -1,4 +1,4 @@
-define(['packages/util/wrap'], function(wrap) {
+define(['pixy/util/wrap'], function(wrap) {
   describe('Util.wrap', function() {
     it('should wrap a method', function() {
       var x, y;
