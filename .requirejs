@@ -2,6 +2,7 @@ requirejs.config({
   paths: {
     'inflection': '../vendor/inflection',
     'underscore': '../vendor/underscore',
+    'lodash': '../vendor/underscore',
     'jquery': '../vendor/jquery',
     'react': '../vendor/react-0.10.0',
     'route-recognizer': '../vendor/route-recognizer',
@@ -13,6 +14,7 @@ requirejs.config({
   shim: {
     'inflection': { exports: 'InflectionJS' },
     'underscore': { exports: '_' },
+    'lodash': { exports: '_' },
     'jquery': { exports: '$' },
     'react': { exports: 'React' }
   }

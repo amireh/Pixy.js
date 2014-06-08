@@ -10,6 +10,7 @@ requirejs.config({
   },
 
   paths: {
+    'lodash': '../../vendor/underscore',
     'store': '../../vendor/store',
     'rsvp/utils': '../../vendor/rsvp'
   },
