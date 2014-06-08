@@ -20,5 +20,30 @@ describe('Pixy.Collection', function() {
 
       expect(subject.model).toEqual(model);
     });
+
+    it('should share a model with another collection', function() {
+      var Fruit = Pixy.Model.extend({
+        defaults: {
+          type: 'fruit'
+        }
+      });
+
+      var FruitCollection = Pixy.Collection.extend({
+        model: Fruit
+      });
+
+      var strawberry = new Fruit({
+        type: 'strawberry'
+      });
+
+      var fruitCollection = new FruitCollection();
+      var otherCollection = new FruitCollection();
+
+      fruitCollection.add([ strawberry ]);
+      otherCollection.add([ strawberry ]);
+
+      expect(fruitCollection.length).toEqual(1);
+      expect(otherCollection.length).toEqual(1);
+    });
   });
 });
