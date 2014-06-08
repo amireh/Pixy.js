@@ -46,4 +46,24 @@ describe('Pixy.Collection', function() {
       expect(otherCollection.length).toEqual(1);
     });
   });
+
+  it('should broadcast @sync on set', function() {
+    var subject = new Pixy.Collection();
+    var listener = sinon.stub();
+
+    subject.on('sync', listener);
+    subject.set([ {} ], { silent: false });
+
+    expect(listener.callCount).toEqual(1);
+  });
+
+  it('should broadcast @sync on resset', function() {
+    var subject = new Pixy.Collection();
+    var listener = sinon.stub();
+
+    subject.on('sync', listener);
+    subject.reset([ {} ]);
+
+    expect(listener.callCount).toEqual(1);
+  });
 });
