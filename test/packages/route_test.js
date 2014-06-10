@@ -92,4 +92,20 @@ describe('Pixy.Route', function() {
     expect(mixinHookCalled).toEqual(true);
     expect(routeHookCalled).toEqual(true);
   });
+
+  it('should include a mixin method', function() {
+    var Mixin = {
+      mixinMethods: {
+        someFunc: function() {
+          return true;
+        }
+      }
+    };
+
+    var Route = new Pixy.Route('testRoute', {
+      mixins: [ Mixin ]
+    });
+
+    expect(typeof Route.someFunc).toEqual('function');
+  });
 });
