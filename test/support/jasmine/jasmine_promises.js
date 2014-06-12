@@ -231,40 +231,40 @@ require([ 'when', 'rsvp' ], function(when, RSVP) {
   /** alias to shouldFulfill */
   promisePrototype.shouldResolve = promisePrototype.shouldFulfill;
 
-  beforeEach(function() {
-    promiseDelivered = false;
-    expectationsCalled = true;
+  // beforeEach(function() {
+  //   promiseDelivered = false;
+  //   expectationsCalled = true;
 
-    this.addMatchers({
-      toHaveBeenFulfilled: function(result) {
-        var description = promiseDescription;
+  //   this.addMatchers({
+  //     toHaveBeenFulfilled: function(result) {
+  //       var description = promiseDescription;
 
-        if (result) {
-          result = ' with: ' + JSON.stringify(result);
-        }
+  //       if (result) {
+  //         result = ' with: ' + JSON.stringify(result);
+  //       }
 
-        this.message = function() {
-          return 'Expected promise of "' + description + '"' +
-          'to have been fulfilled, but it was rejected' + (result||'') + '.';
-        };
+  //       this.message = function() {
+  //         return 'Expected promise of "' + description + '"' +
+  //         'to have been fulfilled, but it was rejected' + (result||'') + '.';
+  //       };
 
-        return false;
-      },
+  //       return false;
+  //     },
 
-      toHaveBeenRejected: function(result) {
-        var description = promiseDescription;
+  //     toHaveBeenRejected: function(result) {
+  //       var description = promiseDescription;
 
-        if (result) {
-          result = ' with: ' + JSON.stringify(result);
-        }
+  //       if (result) {
+  //         result = ' with: ' + JSON.stringify(result);
+  //       }
 
-        this.message = function() {
-          return 'Expected promise of "' + description + '"' +
-          'to have been rejected, but it was fulfilled' + (result||'') + '.';
-        };
+  //       this.message = function() {
+  //         return 'Expected promise of "' + description + '"' +
+  //         'to have been rejected, but it was fulfilled' + (result||'') + '.';
+  //       };
 
-        return false;
-      }
-    });
-  });
+  //       return false;
+  //     }
+  //   });
+  // });
 });

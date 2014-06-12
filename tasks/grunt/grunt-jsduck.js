@@ -1,6 +1,6 @@
 module.exports = {
   main: {
-    src: [ 'packages' ],
+    src: [ 'lib/pixy' ],
     dest: 'doc/api',
     options: {
       'title': 'Pixy.js Reference',

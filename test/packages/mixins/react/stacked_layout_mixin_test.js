@@ -57,9 +57,9 @@ define([ 'pixy/ext/react' ], function(React) {
       });
 
       it('should add a view to the layout', function() {
-        var renderSpy = spyOn(Component.type.prototype, 'render').andCallThrough();
-        var mountSpy = spyOn(Component.type.prototype, 'componentDidMount').andCallThrough();
-        var unmountSpy = spyOn(Component.type.prototype, 'componentWillUnmount').andCallThrough();
+        var renderSpy = spyOn(Component.type.prototype, 'render').and.callThrough();
+        var mountSpy = spyOn(Component.type.prototype, 'componentDidMount').and.callThrough();
+        var unmountSpy = spyOn(Component.type.prototype, 'componentWillUnmount').and.callThrough();
         var masterLayout = React.renderComponent(MasterLayout(), container);
 
         masterLayout.add(Component, 'main');
@@ -70,9 +70,9 @@ define([ 'pixy/ext/react' ], function(React) {
       });
 
       // it('should remove a view from a layout outlet', function() {
-      //   var renderSpy = spyOn(Component.type.prototype, 'render').andCallThrough();
-      //   var mountSpy = spyOn(Component.type.prototype, 'componentDidMount').andCallThrough();
-      //   var unmountSpy = spyOn(Component.type.prototype, 'componentWillUnmount').andCallThrough();
+      //   var renderSpy = spyOn(Component.type.prototype, 'render').and.callThrough();
+      //   var mountSpy = spyOn(Component.type.prototype, 'componentDidMount').and.callThrough();
+      //   var unmountSpy = spyOn(Component.type.prototype, 'componentWillUnmount').and.callThrough();
       //   var masterLayout = React.renderComponent(MasterLayout(), container);
 
       //   masterLayout.add(Component, 'main', {

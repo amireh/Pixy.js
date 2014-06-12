@@ -17,15 +17,19 @@ require([ 'pixy/core/dispatcher', 'when', 'rsvp' ], function(Dispatcher, when, R
     });
 
     describe('#dispatch', function() {
+      this.promiseSuite = true;
+
       it('should invoke callbacks with a payload', function() {
         var callback = sinon.stub();
 
         Dispatcher.register(callback);
         Dispatcher.dispatch('someAction', {
           foo: 'bar'
-        }).promise.shouldResolve(function() {
-          expect(callback.called).toBeTruthy();
-        }).andWait('Payload to be dispatched');
+        });
+
+        this.flush();
+
+        expect(callback.called).toBeTruthy();
       });
 
       xit('should reject a non-camelized action', function() {

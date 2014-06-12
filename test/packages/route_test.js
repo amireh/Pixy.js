@@ -68,6 +68,17 @@ describe('Pixy.Route', function() {
     expect(called).toEqual(true);
   });
 
+  it('should allow inheriting props', function() {
+    var Route = Pixy.Route.extend({
+      secondary: true
+    });
+
+    var route = new Route('testRoute', {
+    });
+
+    expect(route.secondary).toEqual(true);
+  });
+
   it('should allow extending with mixins', function() {
     var called;
     var mixinHookCalled, routeHookCalled;
@@ -95,7 +106,7 @@ describe('Pixy.Route', function() {
 
   it('should include a mixin method', function() {
     var Mixin = {
-      mixinMethods: {
+      mixinProps: {
         someFunc: function() {
           return true;
         }
@@ -107,5 +118,20 @@ describe('Pixy.Route', function() {
     });
 
     expect(typeof Route.someFunc).toEqual('function');
+  });
+
+  it('should not let a mixin override an own property', function() {
+    var Mixin = {
+      mixinProps: {
+        prop: 'a'
+      }
+    };
+
+    var Route = new Pixy.Route('testRoute', {
+      mixins: [ Mixin ],
+      prop: 'b'
+    });
+
+    expect(Route.prop).toEqual('b');
   });
 });

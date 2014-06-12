@@ -9,17 +9,18 @@ module.exports = {
     template: require('grunt-template-jasmine-requirejs'),
     templateOptions: {
       requireConfigFile: [ '.requirejs', 'test/config.js' ],
-      deferHelpers: true
+      deferHelpers: true,
+      defaultErrors: false
     },
 
     keepRunner: true,
 
-    version: '1.3.1',
+    version: '2.0.0',
 
     styles: [],
 
     helpers: [
-      'test/support/jasmine/*.js',
+      // 'test/support/jasmine/*.js',
       'test/support/*.js',
       'test/helpers/*.js'
     ],

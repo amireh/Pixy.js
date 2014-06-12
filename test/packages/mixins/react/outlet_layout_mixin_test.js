@@ -64,9 +64,9 @@ define([ 'pixy/ext/react' ], function(React) {
       });
 
       it('should add a view to a layout outlet', function() {
-        var renderSpy = spyOn(Component.type.prototype, 'render').andCallThrough();
-        var mountSpy = spyOn(Component.type.prototype, 'componentDidMount').andCallThrough();
-        var unmountSpy = spyOn(Component.type.prototype, 'componentWillUnmount').andCallThrough();
+        var renderSpy = spyOn(Component.type.prototype, 'render').and.callThrough();
+        var mountSpy = spyOn(Component.type.prototype, 'componentDidMount').and.callThrough();
+        var unmountSpy = spyOn(Component.type.prototype, 'componentWillUnmount').and.callThrough();
         var masterLayout = React.renderComponent(MasterLayout(), container);
 
         expect(renderSpy).not.toHaveBeenCalled();
@@ -81,9 +81,9 @@ define([ 'pixy/ext/react' ], function(React) {
       });
 
       it('should mount multiple views in different outlets', function() {
-        var renderSpy = spyOn(Component.type.prototype, 'render').andCallThrough();
-        var mountSpy = spyOn(Component.type.prototype, 'componentDidMount').andCallThrough();
-        var unmountSpy = spyOn(Component.type.prototype, 'componentWillUnmount').andCallThrough();
+        var renderSpy = spyOn(Component.type.prototype, 'render').and.callThrough();
+        var mountSpy = spyOn(Component.type.prototype, 'componentDidMount').and.callThrough();
+        var unmountSpy = spyOn(Component.type.prototype, 'componentWillUnmount').and.callThrough();
         var masterLayout = React.renderComponent(MasterLayout(), container);
 
         expect(renderSpy).not.toHaveBeenCalled();
@@ -95,16 +95,16 @@ define([ 'pixy/ext/react' ], function(React) {
           toEqual([ 'content', 'toolbar' ]);
 
         // Content outlet gets rendered twice, mounted once
-        expect(renderSpy.calls.length).toEqual(3);
+        expect(renderSpy.calls.count()).toEqual(3);
 
         // Both get mounted once
-        expect(mountSpy.calls.length).toEqual(2);
+        expect(mountSpy.calls.count()).toEqual(2);
       });
 
       it('should remove a view from a layout outlet', function() {
-        var renderSpy = spyOn(Component.type.prototype, 'render').andCallThrough();
-        var mountSpy = spyOn(Component.type.prototype, 'componentDidMount').andCallThrough();
-        var unmountSpy = spyOn(Component.type.prototype, 'componentWillUnmount').andCallThrough();
+        var renderSpy = spyOn(Component.type.prototype, 'render').and.callThrough();
+        var mountSpy = spyOn(Component.type.prototype, 'componentDidMount').and.callThrough();
+        var unmountSpy = spyOn(Component.type.prototype, 'componentWillUnmount').and.callThrough();
         var masterLayout = React.renderComponent(MasterLayout(), container);
 
         masterLayout.add(Component, 'main', {

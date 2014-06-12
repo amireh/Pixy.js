@@ -1,6 +1,6 @@
 define([ 'store' ], function(store) {
   describe('Pixy.Cache', function() {
-    this.withFakeServer = true;
+    this.serverSuite = true;
 
     Pixy.Cache.setAdapter(store);
     Pixy.Cache.setAvailable(true);
@@ -115,7 +115,7 @@ define([ 'store' ], function(store) {
       it('should store and pull a cached version', function() {
         expect( o.getCacheEntry() ).toEqual({});
 
-        spyOn(o, 'updateCacheEntry').andCallThrough();
+        spyOn(o, 'updateCacheEntry').and.callThrough();
 
         o.save({
           fruit: 'apple'
@@ -148,23 +148,25 @@ define([ 'store' ], function(store) {
       });
 
       it('should pull remotely if no cached version is available', function() {
-        this.server.respondWith('GET', '/spec_models', Fixtures.XHR(200, {
+        this.respondWith('GET', '/spec_models', Fixtures.XHR(200, {
           name: 'bonkers'
         }));
 
-        spyOn(o, 'getCacheEntry').andReturn(null);
-        spyOn(o, 'fetchCached').andCallThrough();
+        spyOn(o, 'getCacheEntry').and.returnValue(null);
+        spyOn(o, 'fetchCached').and.callThrough();
 
         o.fetch({
           useCache: true
         }).catch(function() {
           console.debug('woops, ')
           return o.fetch({ useCache: false });
-        }).shouldFulfill(function() {
-          expect(o.getCacheEntry).toHaveBeenCalled();
-          expect(o.fetchCached).toHaveBeenCalled();
-          expect(o.get('name')).toEqual('bonkers');
-        }).andWait('Model to be fetched remotely.');
+        });
+
+        this.respond();
+
+        expect(o.getCacheEntry).toHaveBeenCalled();
+        expect(o.fetchCached).toHaveBeenCalled();
+        expect(o.get('name')).toEqual('bonkers');
       });
 
 
@@ -240,7 +242,7 @@ define([ 'store' ], function(store) {
 
       it('should update its entry on @add', function() {
         collection.removeCacheListeners();
-        spyOn(collection, 'updateCacheEntry').andCallThrough();
+        spyOn(collection, 'updateCacheEntry').and.callThrough();
         collection.addCacheListeners();
 
         collection.add([{
@@ -259,21 +261,23 @@ define([ 'store' ], function(store) {
         ]));
 
         collection.removeCacheListeners();
-        spyOn(collection, 'updateCacheEntry').andCallThrough();
+        spyOn(collection, 'updateCacheEntry').and.callThrough();
         collection.addCacheListeners();
 
-        collection.fetch({ useCache: false }).shouldFulfill(function() {
-          expect(collection.updateCacheEntry).toHaveBeenCalled();
-          expect(collection.getCacheEntry()).toEqual([{
-            fruit: 'apple'
-          }]);
-        }).andWait('Collection to be fetched.');
+        collection.fetch({ useCache: false });
 
+        this.respond();
+
+        expect(collection.updateCacheEntry).toHaveBeenCalled();
+        expect(collection.getCacheEntry()).toEqual([{
+          fruit: 'apple'
+        }]);
       });
     });
 
     describe('Hooks', function() {
       var o;
+      this.promiseSuite = true;
 
       beforeEach(function() {
         o = new CacheableModel();
@@ -284,31 +288,23 @@ define([ 'store' ], function(store) {
       });
 
       it('should update on Model#sync', function() {
-        var called = false;
-
         o.removeCacheListeners();
         spyOn(o, 'updateCacheEntry');
         o.addCacheListeners();
 
-        runs(function() {
-          o.fetch({
-            noCache: true,
-            // it will error out, there's no /spec_models API endpoint
-            // so we'll run the success handler manually
-            error: function(model, response, options) {
-              options.success(response, options);
-              called = true;
-            }
-          });
+        o.fetch({
+          noCache: true,
+          // it will error out, there's no /spec_models API endpoint
+          // so we'll run the success handler manually
+          error: function(model, response, options) {
+            options.success(response, options);
+            called = true;
+          }
         });
 
-        waitsFor(function() {
-          return called;
-        }, 'pulling a fake model', 250);
+        this.respond();
 
-        runs(function() {
-          expect( o.updateCacheEntry ).toHaveBeenCalled();
-        });
+        expect( o.updateCacheEntry ).toHaveBeenCalled();
       });
 
       it('should update on Model#set', function() {
