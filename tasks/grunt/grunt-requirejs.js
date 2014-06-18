@@ -43,6 +43,7 @@ module.exports = {
 
       paths: {
         'underscore': 'empty:',
+        'lodash': 'empty:',
         'inflection': 'empty:',
         'jquery': 'empty:',
         'react': 'empty:'
