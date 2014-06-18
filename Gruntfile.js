@@ -37,10 +37,6 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-jsduck');
   grunt.loadNpmTasks('grunt-string-replace');
 
-  // Please don't rename these, they're used by `bin/build`:
-  // ---
-  grunt.registerTask('compile:js', [ 'requirejs:compile' ]);
-
   grunt.registerTask('updatePkg', function () {
     grunt.config.set('pkg', readPackage());
   });
@@ -48,7 +44,7 @@ module.exports = function(grunt) {
   // grunt.registerTask('test', [ 'jsvalidate', /* 'jshint', */ ]);
   grunt.registerTask('test', [ 'connect:tests', 'jasmine' ]);
 
-  grunt.registerTask('build', [ 'compile:js' ]);
+  grunt.registerTask('build', [ 'requirejs' ]);
 
   grunt.registerTask('docs', [ 'jsduck' ]);
   grunt.registerTask('default', [ 'test' ]);
