@@ -1,23 +1,50 @@
+var _ = require('lodash');
+var extend = _.extend;
+
+var baseConfig = {
+  baseUrl: './lib',
+  mainConfigFile: '.requirejs',
+
+  removeCombined:           false,
+  inlineText:               true,
+  preserveLicenseComments:  false,
+
+  pragmas: {
+    production: true
+  },
+
+  paths: {
+    'underscore': 'empty:',
+    'lodash': 'empty:',
+    'inflection': 'empty:',
+    'jquery': 'empty:',
+    'react': 'empty:'
+  },
+
+  shim: {
+    pixy: {}
+  },
+
+  rawText: {
+    'pixy': 'define(["pixy/main"], function (Pixy) { return Pixy; });'
+  },
+
+  name: 'pixy',
+  deps: [ 'pixy/main' ]
+};
+
 module.exports = {
-  compile: {
-    options: {
-      baseUrl: './lib',
-      out: 'build/pixy.js',
-      mainConfigFile: '.requirejs',
-      // optimize: 'uglify2',
+  development: {
+    options: extend({}, baseConfig, {
+      out: 'dist/pixy.js',
       optimize: 'none',
+    })
+  },
 
-      removeCombined:           false,
-      inlineText:               true,
-      preserveLicenseComments:  false,
-
-      uglify: {
-        toplevel:         true,
-        ascii_only:       true,
-        beautify:         false,
-        max_line_length:  1000,
-        no_mangle:        false
-      },
+  production: {
+    options: extend({}, baseConfig, {
+      out: 'dist/pixy.min.js',
+      optimize: 'uglify2',
 
       uglify2: {
         warnings: true,
@@ -35,34 +62,14 @@ module.exports = {
           if_return:  true,
           join_vars:  true
         }
-      },
+      }
+    })
+  },
 
-      pragmas: {
-        production: true
-      },
-
-      paths: {
-        'underscore': 'empty:',
-        'lodash': 'empty:',
-        'inflection': 'empty:',
-        'jquery': 'empty:',
-        'react': 'empty:'
-      },
-
-      shim: { pixy: {} },
-      rawText: {
-        'pixy': 'define(["pixy/main"], function (Pixy) { return Pixy; });'
-      },
-
-      name: 'pixy',
-      deps: [ 'pixy/main' ]
-    }
-  }
-  ,
-  compile_jasmine: {
+  jasmine: {
     options: {
       baseUrl: './lib',
-      out: 'build/pixy-jasmine.js',
+      out: 'dist/pixy-jasmine.js',
       mainConfigFile: '.requirejs',
       optimize: 'none',
 
@@ -83,6 +90,8 @@ module.exports = {
         'inflection': 'empty:',
         'jquery': 'empty:',
         'react': 'empty:',
+        'rsvp': 'empty:',
+        'router': 'empty:',
         'backburner': './pixy-jasmine/vendor/backburner',
         'sinon': './pixy-jasmine/vendor/sinon-1.7.3'
       },

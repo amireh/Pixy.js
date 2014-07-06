@@ -42,6 +42,7 @@
     "lodash": "1.2.x",
     "when": "2.7.x",
     "jquery": "2.x",
-    "react": "0.10.x"
+    "react": "0.10.x",
+    "rsvp": "3.0.x"
   }
 }
