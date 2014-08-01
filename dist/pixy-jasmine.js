@@ -5294,7 +5294,16 @@ define('pixy-jasmine/main',[
   './server_suite',
   './route_suite'
 ], function(RSVP) {
+  var config = this.jasmine.pixy = {
+    enabled: true,
+    logRSVPErrors: true
+  };
+
   RSVP.configure('onerror', function(e) {
+    if (!config.logRSVPErrors) {
+      return;
+    }
+
     console.error('RSVP error:', e);
 
     if (e && e.message) {

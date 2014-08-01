@@ -2002,6 +2002,20 @@ define('pixy/mixins/react/util',[ 'inflection' ], function() {
       return (component.displayName || component.type.displayName)
         .underscore()
         .camelize();
+    },
+
+    render: function(type, initialProps, dontTransferProps) {
+      if (!type) {
+        return false;
+      }
+      else if (!type.call) {
+        return type;
+      }
+      else {
+        return dontTransferProps ?
+          type(initialProps) :
+          this.transferPropsTo(type(initialProps));
+      }
     }
   };
 });
@@ -2167,6 +2181,8 @@ define('pixy/mixins/react/layout_manager_mixin',[ 'react', 'lodash', 'rsvp', './
 define('pixy/mixins/react/layout_mixin',[ 'react', 'underscore', './util' ], function(React, _, Util) {
   var contains = _.contains;
   var update = React.addons.update;
+  var render = Util.render;
+  var getName = Util.getName;
 
   var getOutletOccupant = function(outlet, props) {
     var type = props.components[outlet];
@@ -2201,7 +2217,7 @@ define('pixy/mixins/react/layout_mixin',[ 'react', 'underscore', './util' ], fun
        */
       isEmpty: function(props, state) {
         var outlet;
-        var outlets = props ? props.components : state[Util.getName(this)];
+        var outlets = props ? props.components : state[getName(this)];
 
         for (outlet in outlets) {
           if (outlets.hasOwnProperty(outlet) && !!outlets[outlet]) {
@@ -2232,7 +2248,7 @@ define('pixy/mixins/react/layout_mixin',[ 'react', 'underscore', './util' ], fun
        */
       addComponent: function(component, options, state) {
         var subState;
-        var layoutName = Util.getName(this);
+        var layoutName = getName(this);
         var outlet = options.outlet || getDefaultOutlet(this);
         var newState = {};
 
@@ -2302,15 +2318,11 @@ define('pixy/mixins/react/layout_mixin',[ 'react', 'underscore', './util' ], fun
     },
 
     renderOutlet: function(outlet, initialProps, dontTransferProps) {
-      var type = getOutletOccupant(outlet, this.props);
-
-      if (!type) {
-        return false;
-      }
-
-      return dontTransferProps ?
-        type(initialProps) :
-        this.transferPropsTo(type(initialProps));
+      return render.apply(this, [
+        getOutletOccupant(outlet, this.props),
+        initialProps,
+        dontTransferProps
+      ]);
     }
   };
 });
@@ -2318,6 +2330,7 @@ define('pixy/mixins/react/stacked_layout_mixin',[ 'react', 'underscore', './util
   var without = _.without;
   var update = React.addons.update;
   var getName = Util.getName;
+  var render = Util.render;
 
   return {
     statics: {
@@ -2377,15 +2390,11 @@ define('pixy/mixins/react/stacked_layout_mixin',[ 'react', 'underscore', './util
     },
 
     renderComponent: function(initialProps, dontTransferProps) {
-      var type = this.getNextComponentType();
-
-      if (type) {
-        return dontTransferProps ?
-          type(initialProps) :
-          this.transferPropsTo(type(initialProps));
-      } else {
-        return undefined;
-      }
+      return render.apply(this, [
+        this.getNextComponentType(),
+        initialProps,
+        dontTransferProps
+      ]);
     }
   };
 });
@@ -2674,8 +2683,9 @@ define('pixy/util/sync',[ 'underscore', '../util' ], function(_, Util) {
   // Useful when interfacing with server-side languages like **PHP** that make
   // it difficult to read the body of `PUT` requests.
   return function(method, model, options) {
-    var params, xhr;
+    var params, xhr, attrs;
     var type = methodMap[method];
+
     // Default options, unless specified.
     options = options || {};
 
@@ -2689,8 +2699,10 @@ define('pixy/util/sync',[ 'underscore', '../util' ], function(_, Util) {
 
     // Ensure that we have the appropriate request data.
     if (!options.data && model && (contains(PAYLOAD_METHODS, method))) {
+      attrs = options.attrs || model.toJSON(options);
+      model.normalize(attrs);
       params.contentType = 'application/json';
-      params.data = JSON.stringify(options.attrs || model.toJSON(options));
+      params.data = JSON.stringify(attrs);
     }
 
     // Don't process data on a non-GET request.
@@ -2761,6 +2773,14 @@ define('pixy/namespace',[
   // Override this if you'd like to use a different library.
   Pixy.ajax = function() {
     return RSVP.Promise.cast(Pixy.$.ajax.apply(Pixy.$, arguments));
+  };
+
+  Pixy.warn = function() {
+    if (window.hasOwnProperty('PIXY_TEST')) {
+      return;
+    }
+
+    return console.warn.apply(console, arguments);
   };
 
   return Pixy;
@@ -2962,11 +2982,11 @@ define('pixy/object',[
 
 define('pixy/core/dispatcher',[ 'underscore', 'rsvp', '../object' ], function(_, RSVP, PObject) {
   var callbacks = [];
-  var camelize = String.prototype.camelize;
-  var underscore = String.prototype.underscore;
+  var supportedActions = [];
   var extend = _.extend;
   var actionIndex = 0;
   var EXTRACTOR = /^([^:]+):(.*)$/;
+  var handlers = {};
 
   /**
    * @class Pixy.Dispatcher
@@ -2979,9 +2999,9 @@ define('pixy/core/dispatcher',[ 'underscore', 'rsvp', '../object' ], function(_,
     name: 'Dispatcher',
 
     dispatch: function(actionType, payload, options) {
-      var service;
+      var service, action;
       var storeKey, actionId;
-      var promises = [];
+      var promise;
       var fragments = (''+actionType).match(EXTRACTOR);
 
       if (fragments) {
@@ -2989,7 +3009,7 @@ define('pixy/core/dispatcher',[ 'underscore', 'rsvp', '../object' ], function(_,
         actionId = fragments[2];
       }
 
-      var action = extend({}, options, {
+      action = extend({}, options, {
         id: actionId,
         storeKey: storeKey,
         type: actionType,
@@ -2997,14 +3017,26 @@ define('pixy/core/dispatcher',[ 'underscore', 'rsvp', '../object' ], function(_,
         payload: payload
       });
 
-      console.debug('Dispatching action:', action);
+      if (fragments) {
+        if (supportedActions.indexOf(actionType) === -1) {
+          console.assert(false, 'No action handler registered to:', actionType);
+          promise = RSVP.reject('Unknown action');
+        }
+        else {
+          console.debug('Dispatching targeted action "', actionId, '" with args:', action);
+          promise = handlers[storeKey](action);
+        }
+      }
+      else {
+        console.debug('Dispatching generic action "', actionId, '" to all stores:', action);
 
-      callbacks.forEach(function(callback) {
-        promises.push(callback(action));
-      });
+        promise = callbacks.reduce(function(promises, callback) {
+          return promises.concat(callback(action));
+        }, []);
+      }
 
       service = {
-        promise: RSVP.all(promises),
+        promise: promise,
         index: action.index,
         // @deprecated
         actionIndex: action.index
@@ -3015,6 +3047,14 @@ define('pixy/core/dispatcher',[ 'underscore', 'rsvp', '../object' ], function(_,
 
     register: function(callback) {
       callbacks.push(callback);
+    },
+
+    registerActionHandler: function(action, key) {
+      supportedActions.push([ key , action ].join(':'));
+    },
+
+    registerHandler: function(key, handler) {
+      handlers[key] = handler;
     }
 
       });
@@ -3025,6 +3065,10 @@ define('pixy/mixins/react/actor_mixin',['require','../../core/dispatcher'],funct
   var Dispatcher = require('../../core/dispatcher');
 
   var ActorMixin = {
+    statics: {
+      actionCallbacks: []
+    },
+
     getInitialState: function() {
       return {
         actionIndex: null
@@ -3037,28 +3081,111 @@ define('pixy/mixins/react/actor_mixin',['require','../../core/dispatcher'],funct
       };
     },
 
-    componentDidUpdate: function() {
-      var storeError = this.props.storeError;
+    componentWillReceiveProps: function(nextProps) {
+      var storeError = nextProps.storeError;
 
       if (storeError && storeError.actionIndex === this.state.actionIndex) {
-        if (this.onStoreError) {
-          this.onStoreError(storeError);
-        }
+        this.setState({ storeError: storeError });
       }
     },
 
+    componentDidUpdate: function() {
+      if (this.state.storeError) {
+        if (this.onStoreError) {
+          this.onStoreError(this.state.storeError);
+        }
+
+        this.setState({ storeError: null });
+      }
+    },
+
+    componentWillUnmount: function() {
+      this.lastAction = undefined;
+    },
+
     trackAction: function(service) {
+      this.lastAction = service.promise;
+
       this.setState({
         actionIndex: service.index
       });
     },
 
-    sendAction: function(action, params) {
+    /**
+     * Convenient method for consuming events.
+     *
+     * @param {Event} e
+     *        Something that responds to #preventDefault().
+     */
+    consume: function(e) {
+      if (e) {
+        e.preventDefault();
+      }
+    },
+
+    /**
+     * Register a handler to be called anytime an action is sent.
+     *
+     * This is meant for undeclarative, absolutely obtrusive, and yet totally
+     * convenient inter-mixin operability.
+     *
+     * @param {Function} callback
+     *        Your action processor.
+     *
+     * @param {RSVP.Promise} callback.promise
+     *        The action promise.
+     *
+     * @param {String} callback.string
+     *        The action identifier.
+     *
+     * @param {Object} callback.params
+     *        The action payload.
+     */
+    addActionListener: function(callback) {
+      this.type.actionCallbacks.push(callback);
+    },
+
+    /**
+     * Send an action via the Dispatcher.
+     *
+     * This method will invoke all registered action callbacks.
+     *
+     * @param {String} action (required)
+     *        Unique action identifier. Must be scoped by the store key, e.g:
+     *        "categories:save", or "users:changePassword".
+     *
+     * @param {Object} [params={}]
+     *        Action payload.
+     *
+     * @return {RSVP.Promise}
+     *         The action promise which will fulfill if the action succeeds,
+     *         or fail if the action doesn't. Failure will be presented by
+     *         an error that adheres to the UIError interface.
+     */
+    sendAction: function(action, params, options) {
+      var setState = this.setState.bind(this);
       var service = Dispatcher.dispatch(action, params, {
         source: 'VIEW_ACTION'
       });
 
+      if (options && options.track === false) {
+        return;
+      }
+
       this.trackAction(service);
+
+      service.promise.then(null, function(error) {
+        setState({
+          storeError: {
+            actionIndex: service.index,
+            error: error
+          }
+        });
+      });
+
+      this.type.actionCallbacks.forEach(function(callback) {
+        callback(service.promise, action, params);
+      });
 
       return service.promise;
     }
@@ -5940,6 +6067,12 @@ define('pixy/model',[
 ],
 function(_, when, Pixy, PObject, Util, RSVP) {
   var slice = [].slice;
+  var extend = _.extend;
+  var clone = _.clone;
+  var pick = _.pick;
+  var defaults = _.defaults;
+  var result = _.result;
+  var uniqueId = _.uniqueId;
 
   // Pixy.Model
   // --------------
@@ -5972,22 +6105,21 @@ function(_, when, Pixy, PObject, Util, RSVP) {
     // Create a new model with the specified attributes. A client id (`cid`)
     // is automatically generated and assigned for you.
     constructor: function(attrs, options) {
+      attrs = attrs || {};
+
+      if (!options) {
+        options = {};
+      }
+
+      this.cid = uniqueId( this.cidPrefix || 'c');
+      this.attributes = {};
+
+      extend(this, pick(options, modelOptions));
+
+      attrs = this.parse(attrs, options) || {};
+      attrs = this._assignDefaults(attrs);
+
       PObject.call(this, 'model', function() {
-        attrs = attrs || {};
-
-        if (!options) {
-          options = {};
-        }
-
-        this.cid = _.uniqueId( this.cidPrefix || 'c');
-        this.attributes = {};
-        _.extend(this, _.pick(options, modelOptions));
-
-        if (options.parse) {
-          attrs = this.parse(attrs, options) || {};
-        }
-
-        attrs = this._assignDefaults(attrs);
 
         this.set(attrs, options);
         this.changed = {};
@@ -5998,11 +6130,11 @@ function(_, when, Pixy, PObject, Util, RSVP) {
     },
 
     _assignDefaults: function(attrs) {
-      return _.defaults({}, attrs, _.result(this, 'defaults'));
+      return defaults({}, attrs, result(this, 'defaults'));
     },
 
     _setServerAttributes: function() {
-      this.serverAttrs = _.clone(this.attributes);
+      this.serverAttrs = clone(this.attributes);
     },
 
     // Initialize is an empty function by default. Override it with your own
@@ -6015,11 +6147,15 @@ function(_, when, Pixy, PObject, Util, RSVP) {
 
     // Return a copy of the model's `attributes` object.
     toJSON: function(options) {
-      return _.clone(this.attributes);
+      return clone(this.attributes);
     },
 
     toProps: function() {
-      return this.toJSON();
+      var attrs = this.toJSON();
+      return Object.keys(attrs).reduce(function(props, key) {
+        props[key.camelize(true)] = attrs[key];
+        return props;
+      }, {});
     },
 
     // Proxy `Pixy.sync` by default -- but override this if you need
@@ -6074,7 +6210,7 @@ function(_, when, Pixy, PObject, Util, RSVP) {
       this._changing  = true;
 
       if (!changing) {
-        this._previousAttributes = _.clone(this.attributes);
+        this._previousAttributes = clone(this.attributes);
         this.changed = {};
       }
       current = this.attributes, prev = this._previousAttributes;
@@ -6122,14 +6258,14 @@ function(_, when, Pixy, PObject, Util, RSVP) {
     // Remove an attribute from the model, firing `"change"`. `unset` is a noop
     // if the attribute doesn't exist.
     unset: function(attr, options) {
-      return this.set(attr, void 0, _.extend({}, options, {unset: true}));
+      return this.set(attr, void 0, extend({}, options, {unset: true}));
     },
 
     // Clear all attributes on the model, firing `"change"`.
     clear: function(options) {
       var attrs = {};
       for (var key in this.attributes) attrs[key] = void 0;
-      return this.set(attrs, _.extend({}, options, {unset: true}));
+      return this.set(attrs, extend({}, options, {unset: true}));
     },
 
     // Determine if the model has changed since the last `"change"` event.
@@ -6146,7 +6282,7 @@ function(_, when, Pixy, PObject, Util, RSVP) {
     // You can also pass an attributes object to diff against the model,
     // determining if there *would be* a change.
     changedAttributes: function(diff) {
-      if (!diff) return this.hasChanged() ? _.clone(this.changed) : false;
+      if (!diff) return this.hasChanged() ? clone(this.changed) : false;
       var val, changed = false;
       var old = this._changing ? this._previousAttributes : this.attributes;
       for (var attr in diff) {
@@ -6166,14 +6302,14 @@ function(_, when, Pixy, PObject, Util, RSVP) {
     // Get all of the attributes of the model at the time of the previous
     // `"change"` event.
     previousAttributes: function() {
-      return _.clone(this._previousAttributes);
+      return clone(this._previousAttributes);
     },
 
     // Fetch the model from the server. If the server's representation of the
     // model differs from its current attributes, they will be overridden,
     // triggering a `"change"` event.
     fetch: function(options) {
-      options = options ? _.clone(options) : {};
+      options = options ? clone(options) : {};
 
       var model = this;
       var success = options.success;
@@ -6211,13 +6347,10 @@ function(_, when, Pixy, PObject, Util, RSVP) {
 
       when(this.__save.apply(this, arguments)).then(function(data) {
         if (!data) {
-          that.warn('unable to save; local validation failure:',
-            that.validationError);
+          Pixy.warn('Model save failed; local validation failure:', that.validationError);
 
           return service.reject(that.validationError);
         }
-
-        that.debug('save succeeded:', arguments);
 
         return service.resolve(that);
       }).otherwise(function(xhrError) {
@@ -6239,9 +6372,9 @@ function(_, when, Pixy, PObject, Util, RSVP) {
           });
         }
 
-        that.warn('unable to save; XHR failure:', apiError, xhrError);
+        Pixy.warn('Model save failed; XHR failure:', apiError, xhrError);
 
-        that.trigger('invalid', that, apiError, _.extend({}, options, {
+        that.trigger('invalid', that, apiError, extend({}, options, {
           validationError: apiError
         }));
 
@@ -6274,7 +6407,7 @@ function(_, when, Pixy, PObject, Util, RSVP) {
       // If we're not waiting and attributes exist, save acts as `set(attr).save(null, opts)`.
       if (attrs && (!options || !options.wait) && !this.set(attrs, options)) return false;
 
-      options = _.extend({validate: true}, options);
+      options = extend({validate: true}, options);
 
       // Do not persist invalid models.
       if (!this._validate(attrs, options)) {
@@ -6287,10 +6420,10 @@ function(_, when, Pixy, PObject, Util, RSVP) {
 
       // Set temporary attributes if `{wait: true}`.
       if (attrs && options.wait) {
-        this.attributes = _.extend({}, attributes, attrs);
+        this.attributes = extend({}, attributes, attrs);
       }
       else if (attrs && this.isNew()) {
-        this.attributes = _.extend({}, attributes, attrs);
+        this.attributes = extend({}, attributes, attrs);
       }
 
       // After a successful server-side save, the client is (optionally)
@@ -6303,7 +6436,7 @@ function(_, when, Pixy, PObject, Util, RSVP) {
         // Ensure attributes are restored during synchronous saves.
         model.attributes = attributes;
         var serverAttrs = model.parse(resp, options);
-        if (options.wait) serverAttrs = _.extend(attrs || {}, serverAttrs);
+        if (options.wait) serverAttrs = extend(attrs || {}, serverAttrs);
 
         if (_.isObject(serverAttrs) && !model.set(serverAttrs, options)) {
 
@@ -6370,7 +6503,10 @@ function(_, when, Pixy, PObject, Util, RSVP) {
 
       when(this.__destroy.apply(this, arguments)).then(function(resp) {
         that._events.sync = null;
+        that.stopListening();
+
         service.resolve(resp);
+
         return resp;
       }).otherwise(function(err) {
         service.reject(err);
@@ -6415,8 +6551,8 @@ function(_, when, Pixy, PObject, Util, RSVP) {
     // that will be called.
     url: function() {
       var suffix;
-      var base = _.result(this, 'urlRoot') ||
-        _.result(this.collection, 'url') ||
+      var base = result(this, 'urlRoot') ||
+        result(this.collection, 'url') ||
         Util.urlError();
 
       if (this.isNew()) {
@@ -6446,17 +6582,17 @@ function(_, when, Pixy, PObject, Util, RSVP) {
 
     // Check if the model is currently in a valid state.
     isValid: function(options) {
-      return this._validate({}, _.extend(options || {}, { validate: true }));
+      return this._validate({}, extend(options || {}, { validate: true }));
     },
 
     // Run validation against the next complete set of model attributes,
     // returning `true` if all is well. Otherwise, fire an `"invalid"` event.
     _validate: function(attrs, options) {
       if (!options.validate || !this.validate) return true;
-      attrs = _.extend({}, this.attributes, attrs);
+      attrs = extend({}, this.attributes, attrs);
       var error = this.validationError = this.validate(attrs, options) || null;
       if (!error) return true;
-      this.trigger('invalid', this, error, _.extend(options || {}, {validationError: error}));
+      this.trigger('invalid', this, error, extend(options || {}, {validationError: error}));
       return false;
     }
   });
@@ -6820,7 +6956,7 @@ define('pixy/collection',[
   // Default options for `Collection#set`.
   var defaults = {
     set: { add: true, remove: true, merge: true },
-    add: { add: true, merge: false, remove: false }
+    add: { add: true, merge: false, remove: false, sort: true }
   };
 
   var setOptions = defaults.set;
@@ -8319,8 +8455,9 @@ define('pixy/store',['require','underscore','./mixins/logger','./mixins/events',
   var InflectionJS = require('inflection');
 
   var extend = _.extend;
+  var keys = _.keys;
   var CHANGE_EVENT = 'change';
-  var ACTION_SUCCESS_EVENT = 'actionDone';
+  var ACTION_SUCCESS_EVENT = 'actionSuccess';
   var ACTION_ERROR_EVENT = 'actionError';
   var RESPONSE_JSON = 'responseJSON';
 
@@ -8341,7 +8478,11 @@ define('pixy/store',['require','underscore','./mixins/logger','./mixins/events',
   }
 
   function onPayload(action) {
-    var handler = this.actions[action.id];
+    var handler;
+
+    if (action.storeKey === this._key) {
+      handler = this.actions[action.id];
+    }
 
     return new RSVP.Promise(function(resolve, reject) {
       var onChange = this._actionEmitter(action, resolve);
@@ -8384,19 +8525,34 @@ define('pixy/store',['require','underscore','./mixins/logger','./mixins/events',
    * An implementation of the Flux Data Store objects.
    */
   var Store = function(name, schema) {
+    var key;
+    var onAction = onPayload.bind(this);
+
     extend(this, schema, {
       name: name
     });
 
-    this._key = name.underscore().replace(/_store$/, '').camelize(true);
+    if (!this._key) {
+      key = this._key = name.underscore().replace(/_store$/, '').pluralize().camelize(true);
+    }
+    else {
+      key = this._key;
+    }
 
-    Dispatcher.register(onPayload.bind(this));
+    Dispatcher.register(onAction);
+    Dispatcher.registerHandler(key, onAction);
+
+    keys(this.actions).forEach(function(actionId) {
+      Dispatcher.registerActionHandler(actionId, key);
+    });
+
     Registry.checkObject(this);
 
     if (this.initialize) {
       this.initialize();
     }
   };
+
 
   extend(Store.prototype, Logger, Events, {
     name: 'GenericStore',
@@ -8562,7 +8718,7 @@ define('pixy/store',['require','underscore','./mixins/logger','./mixins/events',
       return function(attr, value) {
         this.emitActionSuccess(action.type, action.index);
         this.emitChange(attr, value);
-        resolve(value);
+        resolve(arguments.length === 2 ? value : attr);
       }.bind(this);
     },
 
