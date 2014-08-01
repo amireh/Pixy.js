@@ -2751,7 +2751,7 @@ define('pixy/namespace',[
   }
 
   // Current version of the library. Keep in sync with `package.json`.
-  Pixy.VERSION = '1.5.1';
+  Pixy.VERSION = '1.6.0';
 
   Pixy.sync = _.bind(sync, Pixy);
   Pixy.$ = $;
@@ -3065,10 +3065,6 @@ define('pixy/mixins/react/actor_mixin',['require','../../core/dispatcher'],funct
   var Dispatcher = require('../../core/dispatcher');
 
   var ActorMixin = {
-    statics: {
-      actionCallbacks: []
-    },
-
     getInitialState: function() {
       return {
         actionIndex: null
@@ -3103,6 +3099,10 @@ define('pixy/mixins/react/actor_mixin',['require','../../core/dispatcher'],funct
       this.lastAction = undefined;
     },
 
+    /**
+     * @internal
+     * @param  {RSVP.Promise} service
+     */
     trackAction: function(service) {
       this.lastAction = service.promise;
 
@@ -3124,31 +3124,14 @@ define('pixy/mixins/react/actor_mixin',['require','../../core/dispatcher'],funct
     },
 
     /**
-     * Register a handler to be called anytime an action is sent.
+     * Send an action via the Dispatcher, track the action promise, and any
+     * error the handler raises.
      *
-     * This is meant for undeclarative, absolutely obtrusive, and yet totally
-     * convenient inter-mixin operability.
+     * A reference to the action handler's promise will be kept in
+     * `this.lastAction`. The index of the action is tracked in
+     * this.state.actionIndex.
      *
-     * @param {Function} callback
-     *        Your action processor.
-     *
-     * @param {RSVP.Promise} callback.promise
-     *        The action promise.
-     *
-     * @param {String} callback.string
-     *        The action identifier.
-     *
-     * @param {Object} callback.params
-     *        The action payload.
-     */
-    addActionListener: function(callback) {
-      this.type.actionCallbacks.push(callback);
-    },
-
-    /**
-     * Send an action via the Dispatcher.
-     *
-     * This method will invoke all registered action callbacks.
+     * If an error is raised, it will be accessible in `this.state.storeError`.
      *
      * @param {String} action (required)
      *        Unique action identifier. Must be scoped by the store key, e.g:
@@ -3156,6 +3139,10 @@ define('pixy/mixins/react/actor_mixin',['require','../../core/dispatcher'],funct
      *
      * @param {Object} [params={}]
      *        Action payload.
+     *
+     * @param {Object} [options={}]
+     * @param {Boolean} [options.track=true]
+     *        Pass as false if you don't want the mixin to perform any tracking.
      *
      * @return {RSVP.Promise}
      *         The action promise which will fulfill if the action succeeds,
@@ -3181,10 +3168,6 @@ define('pixy/mixins/react/actor_mixin',['require','../../core/dispatcher'],funct
             error: error
           }
         });
-      });
-
-      this.type.actionCallbacks.forEach(function(callback) {
-        callback(service.promise, action, params);
       });
 
       return service.promise;
