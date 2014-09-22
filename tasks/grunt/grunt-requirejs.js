@@ -66,6 +66,17 @@ module.exports = {
     })
   },
 
+  skimmed: {
+    options: extend({}, baseConfig, {
+      out: 'dist/pixy.skimmed.js',
+      optimize: 'none',
+      paths: extend({}, baseConfig.paths, {
+        'rsvp': 'empty:',
+        'router': 'empty:',
+      })
+    })
+  },
+
   jasmine: {
     options: {
       baseUrl: './lib',

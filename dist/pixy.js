@@ -3002,11 +3002,12 @@ define('pixy/core/dispatcher',[ 'underscore', 'rsvp', '../object' ], function(_,
       var service, action;
       var storeKey, actionId;
       var promise;
-      var fragments = (''+actionType).match(EXTRACTOR);
+      // var fragments = (''+actionType).match(EXTRACTOR);
+      var fragments = actionType.split(':');
 
-      if (fragments) {
-        storeKey = fragments[1];
-        actionId = fragments[2];
+      if (fragments.length === 2) {
+        storeKey = fragments[0];
+        actionId = fragments[1];
       }
 
       action = extend({}, options, {
@@ -3017,7 +3018,7 @@ define('pixy/core/dispatcher',[ 'underscore', 'rsvp', '../object' ], function(_,
         payload: payload
       });
 
-      if (fragments) {
+      if (actionId) {
         if (supportedActions.indexOf(actionType) === -1) {
           console.assert(false, 'No action handler registered to:', actionType);
           promise = RSVP.reject('Unknown action');
@@ -6042,13 +6043,13 @@ define("router",
   });
 define('pixy/model',[
   'underscore',
-  'when',
+  'rsvp',
   './namespace',
   './object',
   './util',
   'rsvp'
 ],
-function(_, when, Pixy, PObject, Util, RSVP) {
+function(_, RSVP, Pixy, PObject, Util, RSVP) {
   var slice = [].slice;
   var extend = _.extend;
   var clone = _.clone;
@@ -6135,6 +6136,7 @@ function(_, when, Pixy, PObject, Util, RSVP) {
 
     toProps: function() {
       var attrs = this.toJSON();
+      attrs.is_new = this.isNew();
       return Object.keys(attrs).reduce(function(props, key) {
         props[key.camelize(true)] = attrs[key];
         return props;
@@ -6318,7 +6320,7 @@ function(_, when, Pixy, PObject, Util, RSVP) {
 
     save: function(key, value, options) {
       var that    = this;
-      var service = when.defer();
+      var service = RSVP.defer();
 
       // Handle both `"key", value` and `{key: value}` -style arguments.
       if (key === null || _.isObject(key)) {
@@ -6328,7 +6330,7 @@ function(_, when, Pixy, PObject, Util, RSVP) {
       options = options || {};
       options.parse = true;
 
-      when(this.__save.apply(this, arguments)).then(function(data) {
+      RSVP.Promise.cast(this.__save.apply(this, arguments)).then(function(data) {
         if (!data) {
           Pixy.warn('Model save failed; local validation failure:', that.validationError);
 
@@ -6481,10 +6483,10 @@ function(_, when, Pixy, PObject, Util, RSVP) {
     },
 
     destroy: function() {
-      var service = when.defer();
+      var service = RSVP.defer();
       var that = this;
 
-      when(this.__destroy.apply(this, arguments)).then(function(resp) {
+      RSVP.Promise.cast(this.__destroy.apply(this, arguments)).then(function(resp) {
         that._events.sync = null;
         that.stopListening();
 
@@ -7768,10 +7770,122 @@ define('pixy/core/history',[
 
   return new History();
 });
-define('pixy/core/router',[ 'router', '../ext/jquery', 'rsvp', './history' ],
-function(RouterJS, $, RSVP, locationBar) {
+/**
+ * @class lodash
+ *
+ * Pibi.js lodash extensions.
+ */
+define('pixy/ext/underscore',[ 'underscore' ], function() {
+  var defer = _.defer;
+
+  /**
+   * @method  defer
+   *
+   * Defers executing the `func` function until the current call stack has cleared.
+   * Additional arguments will be passed to `func` when it is invoked.
+   *
+   * @param  {Function} func
+   * The function to be deferred.
+   *
+   * @param  {Object} [thisArg=null]
+   * The `this` context to apply the function as.
+   *
+   * @return {Number}
+   * The timer id as returned by `setTimeout`.
+   */
+  _.defer = function(func, thisArg) {
+    if (!thisArg) {
+      return defer(func);
+    }
+
+    return defer(_.bind.apply(null, arguments));
+  };
+
+  return _;
+});
+define('pixy/config',[ './ext/underscore', './namespace', 'rsvp' ], function(_, Pixy, RSVP) {
+  
+
+  var extend = _.extend;
+
+  /**
+   * @class Config
+   *
+   * Configuration parameters that are required, or utilized, by different Pixy
+   * modules to function correctly.
+   *
+   * Refer to each parameter for more info.
+   */
+  var Config = {};
+
+  /**
+   * @param {Boolean} [isAuthenticated=false]
+   *
+   * Required by Mixins.Routes.AccessPolicy
+   *
+   * @return {Boolean}
+   *         Whether the current user is logged in (using an authentic session.)
+   */
+  Config.isAuthenticated = function() {
+    return false;
+  };
+
+  /**
+   * In case a route defines a view specification and not does specify a layout,
+   * this method gives you a chance to provide a default layout name.
+   *
+   * Since this is a function, you get to provide different layouts based on
+   * application state, like authentication.
+   *
+   * @see Mixins.Routes.Renderer
+   *
+   * @return {String}
+   *         Name of the "default" layout the RendererMixin should render into
+   *         if none was specified.
+   */
+  Config.getCurrentLayoutName = function() {
+  };
+
+  /**
+   * @cfg {String} [defaultAccessPolicy]
+   *
+   * An access policy to assume for all routes that do not explicitly define
+   * one. Used by Mixins.Routes.AccessPolicy.
+   */
+  Config.defaultAccessPolicy = undefined;
+
+  /**
+   * @cfg {String} [defaultWindowTitle]
+   *
+   * A string to use as a default window title for all routes that mix-in
+   * Mixins.Routes.WindowTitle and do not specify a title.
+   */
+  Config.getDefaultWindowTitle = function() {
+    return 'Pixy';
+  };
+
+  Config.getRootRoute = function() {
+    return Pixy.routeMap.root;
+  };
+
+  Config.loadRoute = function(url, done) {
+    return done();
+  };
+
+  Pixy.configure = function(config) {
+    extend(Config, config);
+  };
+
+  return Config;
+});
+define('pixy/core/router',['require','router','../ext/jquery','rsvp','./history','../config'],function(require) {
+  var RouterJS = require('router');
+  var $ = require('../ext/jquery');
+  var RSVP = require('rsvp');
+  var locationBar = require('./history');
+  var config = require('../config');
+
   var replaceState;
-  var consume = $.consume;
   var history = window.history;
 
   /**
@@ -7799,8 +7913,8 @@ function(RouterJS, $, RSVP, locationBar) {
   /**
    * @internal
    */
-  function transitionTo(url) {
-    return router.transitionTo(normalize(url));
+  function transitionTo(rawUrl) {
+    return router.loadAndTransitionTo(rawUrl);
   }
 
   /**
@@ -7815,6 +7929,28 @@ function(RouterJS, $, RSVP, locationBar) {
   }
 
   router = new RouterJS['default']();
+
+  router.loadAndTransitionTo = function(rawUrl, followRedirects) {
+    var svc = RSVP.defer();
+    var url = normalize(rawUrl);
+
+    config.loadRoute(url, function onLoad() {
+      var transition = router.transitionTo(url);
+
+      console.log('Route bundle for', rawUrl, 'has been loaded. Transitioning...');
+
+      if (followRedirects) {
+        svc.resolve(transition.followRedirects());
+      }
+      else {
+        svc.resolve(transition);
+      }
+
+      console.debug('\t', transition);
+    });
+
+    return svc.promise;
+  };
 
   router.updateURL = function(url) {
     console.info('History URL has changed to:', url);
@@ -7890,7 +8026,8 @@ function(RouterJS, $, RSVP, locationBar) {
     search = locationBar.location.search;
 
     replaceState = true;
-    return transitionTo(initialRoute).followRedirects().then(function() {
+
+    return this.loadAndTransitionTo(initialRoute, true).then(function() {
       // Restore the search query parameters, if there were any:
       if (options.pushState && history.pushState) {
         history.replaceState({}, document.title,
@@ -7910,7 +8047,6 @@ function(RouterJS, $, RSVP, locationBar) {
 
   return router;
 });
-
 define('pixy/util/get',[], function() {
   var get = function(attr, callback) {
     var _attr = this[attr];
@@ -8364,6 +8500,12 @@ define('pixy/route',[
       };
 
       this['__' + hookName] = hook;
+    }.bind(this));
+
+    mixins.filter(function(mixin) {
+      return !!mixin.initialize;
+    }).forEach(function(mixin) {
+      mixin.initialize.call(this);
     }.bind(this));
 
     if (!dontRegister) {
@@ -9930,110 +10072,6 @@ define('pixy/mixins/filterable_collection',[
     initialize.apply(collection, []);
   };
 });
-/**
- * @class lodash
- *
- * Pibi.js lodash extensions.
- */
-define('pixy/ext/underscore',[ 'underscore' ], function() {
-  var defer = _.defer;
-
-  /**
-   * @method  defer
-   *
-   * Defers executing the `func` function until the current call stack has cleared.
-   * Additional arguments will be passed to `func` when it is invoked.
-   *
-   * @param  {Function} func
-   * The function to be deferred.
-   *
-   * @param  {Object} [thisArg=null]
-   * The `this` context to apply the function as.
-   *
-   * @return {Number}
-   * The timer id as returned by `setTimeout`.
-   */
-  _.defer = function(func, thisArg) {
-    if (!thisArg) {
-      return defer(func);
-    }
-
-    return defer(_.bind.apply(null, arguments));
-  };
-
-  return _;
-});
-define('pixy/config',[ './ext/underscore', './namespace' ], function(_, Pixy) {
-  
-
-  var extend = _.extend;
-
-  /**
-   * @class Config
-   *
-   * Configuration parameters that are required, or utilized, by different Pixy
-   * modules to function correctly.
-   *
-   * Refer to each parameter for more info.
-   */
-  var Config = {};
-
-  /**
-   * @param {Boolean} [isAuthenticated=false]
-   *
-   * Required by Mixins.Routes.AccessPolicy
-   *
-   * @return {Boolean}
-   *         Whether the current user is logged in (using an authentic session.)
-   */
-  Config.isAuthenticated = function() {
-    return false;
-  };
-
-  /**
-   * In case a route defines a view specification and not does specify a layout,
-   * this method gives you a chance to provide a default layout name.
-   *
-   * Since this is a function, you get to provide different layouts based on
-   * application state, like authentication.
-   *
-   * @see Mixins.Routes.Renderer
-   *
-   * @return {String}
-   *         Name of the "default" layout the RendererMixin should render into
-   *         if none was specified.
-   */
-  Config.getCurrentLayoutName = function() {
-  };
-
-  /**
-   * @cfg {String} [defaultAccessPolicy]
-   *
-   * An access policy to assume for all routes that do not explicitly define
-   * one. Used by Mixins.Routes.AccessPolicy.
-   */
-  Config.defaultAccessPolicy = undefined;
-
-  /**
-   * @cfg {String} [defaultWindowTitle]
-   *
-   * A string to use as a default window title for all routes that mix-in
-   * Mixins.Routes.WindowTitle and do not specify a title.
-   */
-  Config.getDefaultWindowTitle = function() {
-    return 'Pixy';
-  };
-
-  Config.getRootRoute = function() {
-    return Pixy.routeMap.root;
-  };
-
-  Pixy.configure = function(config) {
-    extend(Config, config);
-  };
-
-  return Config;
-});
 define('pixy/mixins/routes/access_policy',[ '../../config', 'rsvp' ], function(Config, RSVP) {
   var RC_PASS = void 0;
 
@@ -10192,6 +10230,7 @@ define('pixy/mixins/routes/props',[ 'underscore', '../../config' ], function(_, 
       }, {});
 
       setProps(props, this);
+      this.context = undefined;
     }
   };
 });
@@ -10581,61 +10620,33 @@ define('pixy/mixins',[
 
   return exports;
 });
-define('pixy/main',[
-  'underscore',
-  'inflection',
-  'when',
-  'rsvp',
-  './ext/react',
-  './ext/jquery',
-  'router',
-  './namespace',
-  './object',
-  './model',
-  './deep_model',
-  './collection',
-  './core/router',
-  './route',
-  './store',
-  './logging_context',
-  './core/registry',
-  './core/cache',
-  './core/dispatcher',
-  './core/mutator',
-  './mutations/attribute_inheritance',
-  './mutations/caching',
-  './mutations/registration',
-  './mixins/filterable_collection',
-  './mixins/logger',
-  './mixins'
-],
-function(
-  _,
-  InflectionJS,
-  when,
-  RSVP,
-  React,
-  $,
-  RouterJS,
-  Pixy,
-  PixyObject,
-  PixyModel,
-  PixyDeepModel,
-  PixyCollection,
-  PixyRouter,
-  PixyRoute,
-  PixyStore,
-  PixyLoggingContext,
-  PixyRegistry,
-  PixyCache,
-  PixyDispatcher,
-  PixyMutator,
-  AttributeInheritanceMutation,
-  CachingMutation,
-  RegistrationMutation,
-  PixyLogger,
-  Mixins
-  ) {
+define('pixy/main',['require','underscore','inflection','when','rsvp','./ext/react','./ext/jquery','router','./namespace','./object','./model','./deep_model','./collection','./core/router','./route','./store','./logging_context','./core/registry','./core/cache','./core/dispatcher','./core/mutator','./mutations/attribute_inheritance','./mutations/caching','./mutations/registration','./mixins/filterable_collection','./mixins/logger','./mixins'],function(require) {
+  var _ = require('underscore');
+  var InflectionJS = require('inflection');
+  var when = require('when');
+  var RSVP = require('rsvp');
+  var React = require('./ext/react');
+  var $ = require('./ext/jquery');
+  var RouterJS = require('router');
+  var Pixy = require('./namespace');
+  var PixyObject = require('./object');
+  var PixyModel = require('./model');
+  var PixyDeepModel = require('./deep_model');
+  var PixyCollection = require('./collection');
+  var PixyRouter = require('./core/router');
+  var PixyRoute = require('./route');
+  var PixyStore = require('./store');
+  var PixyLoggingContext = require('./logging_context');
+  var PixyRegistry = require('./core/registry');
+  var PixyCache = require('./core/cache');
+  var PixyDispatcher = require('./core/dispatcher');
+  var PixyMutator = require('./core/mutator');
+  var AttributeInheritanceMutation = require('./mutations/attribute_inheritance');
+  var CachingMutation = require('./mutations/caching');
+  var RegistrationMutation = require('./mutations/registration');
+  var FilterableCollection = require('./mixins/filterable_collection');
+  var PixyLogger = require('./mixins/logger');
+  var Mixins = require('./mixins');
 
   Pixy.Object = PixyObject;
   Pixy.Model = PixyModel;
