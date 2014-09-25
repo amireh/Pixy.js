@@ -3828,7 +3828,7 @@ define('pixy/route',[
     var ownPropKeys = keys(inheritedProps);
     var hooks = pick(inheritedProps, lifeCycleHooks);
     var mixins = inheritedProps.mixins || [];
-    var mixinMethods;
+    var mixinProps, mixinMethods;
 
     // Don't mix this in if it had already been mixed-in to a parent route.
     if (mixins.indexOf(EventedMixin) === -1) {
