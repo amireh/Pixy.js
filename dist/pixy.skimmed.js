@@ -46,6 +46,7 @@ define('pixy/mixins/react/util',[ 'inflection' ], function() {
 });
 define('pixy/mixins/react/layout_manager_mixin',[ 'react', 'lodash', 'rsvp', './util' ], function(React, _, RSVP, Util) {
   var extend = _.extend;
+  var merge = _.merge;
   var slice = [].slice;
   var getName = Util.getName;
 
@@ -107,11 +108,55 @@ define('pixy/mixins/react/layout_manager_mixin',[ 'react', 'lodash', 'rsvp', './
 
       newState = layout.addComponent(component, options, this.state);
 
-      log(this, 'adding component', getName(component), 'to layout', layoutName);
-
       if (!newState) {
         return svc.resolve();
       }
+
+      log(this, 'adding component', getName(component), 'to layout', layoutName);
+
+      this.setState(newState, svc.resolve);
+
+      return svc.promise;
+    },
+
+    addMany: function(specs) {
+      var newState;
+      var svc = RSVP.defer();
+
+      newState = specs.reduce(function(state, item) {
+        var component = item.component;
+        var layoutName = item.layoutName;
+        var options = item.options || {};
+        var layout = this.type.getLayout(layoutName, this.props, this.state);
+        var stateEntry;
+
+        if (!layout) {
+          console.error('Unknown layout "' + layoutName + '"');
+          return state;
+        }
+
+        if (!layout.canAdd(component, options)) {
+          console.error(
+            'Component ' + getName(component) +
+            ' can not be added to the layout ' + getName(layout)
+          );
+
+          return state;
+        }
+
+        stateEntry = layout.addComponent(component, options, this.state);
+
+        if (!stateEntry) {
+          return state;
+        }
+
+        log(this, 'adding component', getName(component), 'to layout', layoutName);
+        log(this, stateEntry);
+
+        return merge(state, stateEntry);
+      }.bind(this), {});
+
+      console.log('Adding many components:', newState, 'from:', specs);
 
       this.setState(newState, svc.resolve);
 
@@ -5681,8 +5726,7 @@ define('pixy/mixins/routes/renderer',[ '../../config' ], function(Config) {
      */
     enter: function() {
       var mount = this.mount.bind(this);
-
-      this.views.forEach(function(spec) {
+      var specs = this.views.reduce(function(specs, spec) {
         var layoutName = spec.into;
         var layoutOptions = spec.options || {};
 
@@ -5702,8 +5746,14 @@ define('pixy/mixins/routes/renderer',[ '../../config' ], function(Config) {
           spec.options = layoutOptions;
         }
 
-        mount(spec.component, layoutName, layoutOptions);
-      });
+        return specs.concat({
+          component: spec.component,
+          layoutName: layoutName,
+          options: layoutOptions
+        });
+      }, []);
+
+      this.trigger('renderMany', specs);
     },
 
     /**
