@@ -22,9 +22,9 @@ define('when', [ 'rsvp' ], function(RSVP) {
 });
 
 define('pixy/mixins/react/util',[ 'inflection' ], function() {
-  return {
+  var Util = {
     getName: function(component) {
-      return (component.displayName || component.type.displayName)
+      return (component.displayName || Util.getStatic(component, 'displayName'))
         .underscore()
         .camelize();
     },
@@ -41,8 +41,26 @@ define('pixy/mixins/react/util',[ 'inflection' ], function() {
           type(initialProps) :
           this.transferPropsTo(type(initialProps));
       }
+    },
+
+    getStatic: function(component, name) {
+      if (component.constructor) { // react 0.11
+        return component.constructor[name];
+      }
+      else if (component.type) { // react 0.10
+        return component.type[name];
+      }
+      else if (component[name]) {
+        return component[name];
+      }
+      else {
+        console.warn(component);
+        throw new Error("Unable to get a reference to #statics of component. See console.");
+      }
     }
   };
+
+  return Util;
 });
 define('pixy/mixins/react/layout_manager_mixin',[ 'react', 'lodash', 'rsvp', './util' ], function(React, _, RSVP, Util) {
   var extend = _.extend;
@@ -90,7 +108,7 @@ define('pixy/mixins/react/layout_manager_mixin',[ 'react', 'lodash', 'rsvp', './
      */
     add: function(component, layoutName, options) {
       var newState, errorMessage;
-      var layout = this.type.getLayout(layoutName, this.props, this.state);
+      var layout = Util.getStatic(this, 'getLayout')(layoutName, this.props, this.state);
       var svc = RSVP.defer();
 
       options = options || {};
@@ -127,7 +145,7 @@ define('pixy/mixins/react/layout_manager_mixin',[ 'react', 'lodash', 'rsvp', './
         var component = item.component;
         var layoutName = item.layoutName;
         var options = item.options || {};
-        var layout = this.type.getLayout(layoutName, this.props, this.state);
+        var layout = Util.getStatic(this, 'getLayout')(layoutName, this.props, this.state);
         var stateEntry;
 
         if (!layout) {
@@ -176,7 +194,7 @@ define('pixy/mixins/react/layout_manager_mixin',[ 'react', 'lodash', 'rsvp', './
      */
     remove: function(component, layoutName, options) {
       var newState;
-      var layout = this.type.getLayout(layoutName, this.props, this.state);
+      var layout = Util.getStatic(this, 'getLayout')(layoutName, this.props, this.state);
       var svc = RSVP.defer();
 
       options = options || {};

@@ -2,6 +2,7 @@ module.exports = {
   tests: {
     options: {
       keepalive: false,
+      hostname: '*',
       port: 10113
     }
   },
