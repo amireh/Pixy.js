@@ -2019,7 +2019,10 @@ define('pixy/mixins/react/util',[ 'inflection' ], function() {
     },
 
     getStatic: function(component, name) {
-      if (component.constructor) { // react 0.11
+      if (component.originalSpec) { // react 0.11
+        return component.originalSpec[name];
+      }
+      else if (component.constructor) { // react 0.11
         return component.constructor[name];
       }
       else if (component.type) { // react 0.10
@@ -2814,7 +2817,7 @@ define('pixy/namespace',[
   }
 
   // Current version of the library. Keep in sync with `package.json`.
-  Pixy.VERSION = '1.6.3';
+  Pixy.VERSION = '1.7.0';
 
   Pixy.sync = _.bind(sync, Pixy);
   Pixy.$ = $;
