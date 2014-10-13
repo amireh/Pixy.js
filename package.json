@@ -17,7 +17,10 @@
   "bugs": {
     "url": "https://github.com/amireh/Pixy.js/issues"
   },
-  "main": "main.js",
+  "main": "lib/pixy/main.js",
+  "directories": {
+    "lib": "lib/pixy"
+  },
   "scripts": {
     "default": "grunt",
     "test": "grunt test"
@@ -39,10 +42,9 @@
     "grunt-jsduck": "0.1.x"
   },
   "dependencies": {
-    "lodash": "1.2.x",
-    "when": "2.7.x",
-    "jquery": "2.x",
-    "react": "0.10.x",
-    "rsvp": "3.0.x"
+    "lodash": "1.2.1",
+    "jquery": "2.0.2",
+    "react": "0.11.2",
+    "rsvp": "3.0.14"
   }
 }
