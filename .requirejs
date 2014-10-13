@@ -7,8 +7,7 @@ requirejs.config({
     'react': '../vendor/react-0.10.0',
     'route-recognizer': '../vendor/route-recognizer',
     'router': '../vendor/router.amd',
-    'rsvp': '../vendor/rsvp',
-    'when': '../vendor/when-shim'
+    'rsvp': '../vendor/rsvp'
   },
 
   shim: {

@@ -1,6 +1,6 @@
 /* global jasmine:false */
 
-require([ 'when', 'rsvp' ], function(when, RSVP) {
+require([ 'rsvp' ], function(RSVP) {
   var promiseDescription;
   var promiseDelivered;
 
@@ -25,8 +25,6 @@ require([ 'when', 'rsvp' ], function(when, RSVP) {
    * We have to hack into the prototype of When::Promise to add the ability to
    * chain our promise-related jasmine helpers for a very convenient interface.
    */
-  // var promisePrototype = Object.getPrototypeOf(when.promise(function() {}));
-  // var promisePrototype = Object.getPrototypeOf(RSVP.Promise);
   var promisePrototype = RSVP.Promise.prototype;
 
   /**

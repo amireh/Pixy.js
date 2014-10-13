@@ -1,6 +1,4 @@
-require([ 'pixy/core/dispatcher', 'when', 'rsvp' ], function(Dispatcher, when, RSVP) {
-  window.when = when;
-  window.RSVP = RSVP;
+require([ 'pixy/core/dispatcher', 'rsvp' ], function(Dispatcher, RSVP) {
   describe('Core::Dispatcher', function() {
     beforeEach(function() {
       Dispatcher.__reset__();
