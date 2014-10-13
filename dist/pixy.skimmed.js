@@ -1,26 +1,3 @@
-// This is needed as we make the transition from when.js to RSVP.
-//
-// This "shim" provides the same API that when.js exposed but using RSVP.
-define('when', [ 'rsvp' ], function(RSVP) {
-  var Promise = RSVP.Promise;
-  var PromisePrototype = Promise.prototype;
-  var when;
-
-  // Aliases for backwards-compatibility with when.js
-  PromisePrototype.otherwise = PromisePrototype.catch;
-  PromisePrototype.ensure = PromisePrototype.finally;
-  PromisePrototype.done = PromisePrototype.then;
-
-  when = function(value, label) {
-    return Promise.cast(value, label);
-  };
-
-  when.defer = RSVP.defer;
-  when.all = RSVP.all;
-
-  return when;
-});
-
 define('pixy/mixins/react/util',[ 'inflection' ], function() {
   var Util = {
     getName: function(component) {
@@ -842,7 +819,7 @@ define('pixy/namespace',[
   }
 
   // Current version of the library. Keep in sync with `package.json`.
-  Pixy.VERSION = '1.7.0';
+  Pixy.VERSION = '1.7.1';
 
   Pixy.sync = _.bind(sync, Pixy);
   Pixy.$ = $;
@@ -1775,7 +1752,7 @@ function(_, RSVP, Pixy, PObject, Util, RSVP) {
         }
 
         return service.resolve(that);
-      }).otherwise(function(xhrError) {
+      }, function parseAndReportAPIFailure(xhrError) {
         var apiError;
 
         if (xhrError.responseJSON) {
@@ -1789,9 +1766,9 @@ function(_, RSVP, Pixy, PObject, Util, RSVP) {
           apiError = xhrError;
         }
         else {
-          _.defer(function() {
+          setTimeout(function() {
             console.error('Unexpected API error:', xhrError);
-          });
+          }, 1);
         }
 
         Pixy.warn('Model save failed; XHR failure:', apiError, xhrError);
@@ -1930,7 +1907,7 @@ function(_, RSVP, Pixy, PObject, Util, RSVP) {
         service.resolve(resp);
 
         return resp;
-      }).otherwise(function(err) {
+      }, function(err) {
         service.reject(err);
         return err;
       });
@@ -5216,7 +5193,7 @@ define('pixy/mutations/attribute_inheritance',[ 'underscore', '../util/inherit' 
     }
   };
 });
-define('pixy/mutations/caching',[ 'underscore' ], function(_) {
+define('pixy/mutations/caching',[ 'underscore', '../core/cache' ], function(_, Cache) {
   
 
   /**
@@ -5235,7 +5212,7 @@ define('pixy/mutations/caching',[ 'underscore' ], function(_) {
         return;
       }
 
-      Pixy.Cache.makeCacheable(resource);
+      Cache.makeCacheable(resource);
     }
   };
 });
@@ -6062,10 +6039,9 @@ define('pixy/mixins',[
 
   return exports;
 });
-define('pixy/main',['require','underscore','inflection','when','rsvp','./ext/react','./ext/jquery','router','./namespace','./object','./model','./deep_model','./collection','./core/router','./route','./store','./logging_context','./core/registry','./core/cache','./core/dispatcher','./core/mutator','./mutations/attribute_inheritance','./mutations/caching','./mutations/registration','./mixins/filterable_collection','./mixins/logger','./mixins'],function(require) {
+define('pixy/main',['require','underscore','inflection','rsvp','./ext/react','./ext/jquery','router','./namespace','./object','./model','./deep_model','./collection','./core/router','./route','./store','./logging_context','./core/registry','./core/cache','./core/dispatcher','./core/mutator','./mutations/attribute_inheritance','./mutations/caching','./mutations/registration','./mixins/filterable_collection','./mixins/logger','./mixins'],function(require) {
   var _ = require('underscore');
   var InflectionJS = require('inflection');
-  var when = require('when');
   var RSVP = require('rsvp');
   var React = require('./ext/react');
   var $ = require('./ext/jquery');
