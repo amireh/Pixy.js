@@ -10728,12 +10728,21 @@ define('pixy/mixins/routes',[
 
   return exports;
 });
-define('pixy/mixins',[
-  './mixins/routes'
-], function(RouteMixins) {
+define('pixy/mixins/react',['require','./react/layout_manager_mixin','./react/layout_mixin','./react/stacked_layout_mixin','./react/actor_mixin'],function(require) {
   var exports = {};
 
-  exports.Routes = RouteMixins;
+  exports.LayoutManagerMixin = require('./react/layout_manager_mixin');
+  exports.LayoutMixin = require('./react/layout_mixin');
+  exports.StackedLayoutMixin = require('./react/stacked_layout_mixin');
+  exports.ActorMixin = require('./react/actor_mixin');
+
+  return exports;
+});
+define('pixy/mixins',['require','./mixins/routes','./mixins/react'],function(require) {
+  var exports = {};
+
+  exports.Routes = require('./mixins/routes');
+  exports.React = require('./mixins/react');
 
   return exports;
 });
