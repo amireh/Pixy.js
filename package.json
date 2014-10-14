@@ -1,7 +1,7 @@
 {
   "name": "pixy",
   "description": "Fork of Backbone.js that powers Pibi.js.",
-  "version": "1.7.4",
+  "version": "1.7.5",
   "homepage": "https://github.com/amireh/Pixy.js",
   "author": {
     "name": "Ahmad Amireh",
