@@ -3074,9 +3074,9 @@ define('pixy/core/dispatcher',[ 'underscore', 'rsvp', '../object' ], function(_,
       else {
         console.debug('Dispatching generic action "', actionId, '" to all stores:', action);
 
-        promise = callbacks.reduce(function(promises, callback) {
+        promise = RSVP.all(callbacks.reduce(function(promises, callback) {
           return promises.concat(callback(action));
-        }, []);
+        }, []));
       }
 
       service = {
