@@ -5294,7 +5294,8 @@ define('pixy-jasmine/main',[
   './server_suite',
   './route_suite'
 ], function(RSVP) {
-  var config = this.jasmine.pixy = {
+  var jasmine = this.jasmine || {};
+  var config = jasmine.pixy = {
     enabled: true,
     logRSVPErrors: true
   };

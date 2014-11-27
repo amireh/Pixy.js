@@ -819,7 +819,7 @@ define('pixy/namespace',[
   }
 
   // Current version of the library. Keep in sync with `package.json`.
-  Pixy.VERSION = '1.7.5';
+  Pixy.VERSION = '1.8.0';
 
   Pixy.sync = _.bind(sync, Pixy);
   Pixy.$ = $;
@@ -4071,6 +4071,8 @@ define('pixy/store',['require','underscore','./mixins/logger','./mixins/events',
       name: name
     });
 
+    this.reset();
+
     if (!this._key) {
       key = this._key = name.underscore().replace(/_store$/, '').pluralize().camelize(true);
     }
@@ -4263,6 +4265,19 @@ define('pixy/store',['require','underscore','./mixins/logger','./mixins/events',
 
     toString: function() {
       return this.name;
+    },
+
+    reset: function() {
+      this.state = this.getInitialState();
+    },
+
+    getInitialState: function() {
+      return {};
+    },
+
+    setState: function(newState) {
+      extend(this.state, newState);
+      this.emitChange();
     }
   });
 
