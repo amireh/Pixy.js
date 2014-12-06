@@ -819,7 +819,7 @@ define('pixy/namespace',[
   }
 
   // Current version of the library. Keep in sync with `package.json`.
-  Pixy.VERSION = '1.8.0';
+  Pixy.VERSION = '1.8.1';
 
   Pixy.sync = _.bind(sync, Pixy);
   Pixy.$ = $;
@@ -3934,7 +3934,7 @@ define('pixy/route',[
   extend(Route.prototype, Events, {
     get: get,
 
-    transitionTo: Router.transitionTo.bind(Router),
+    transitionTo: Router.loadAndTransitionTo.bind(Router),
     replaceWith: Router.replaceWith.bind(Router),
     trigger: Router.trigger.bind(Router),
 
