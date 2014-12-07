@@ -5,7 +5,7 @@ define([ 'store' ], function(store) {
     Pixy.Cache.setAdapter(store);
     Pixy.Cache.setAvailable(true);
 
-    var CacheableModel = Pixy.Model.extend({
+    var CacheableModel = Pixy.Model.extend(Pixy.Mixins.Cacheable, {
       cache: {
         key: 'spec_model',
       },
@@ -13,7 +13,7 @@ define([ 'store' ], function(store) {
       url: '/spec_models'
     });
 
-    var CacheableCollection = Pixy.Collection.extend({
+    var CacheableCollection = Pixy.Collection.extend(Pixy.Mixins.Cacheable, {
       model: CacheableModel,
       cache: {
         key: 'spec_models'
@@ -30,44 +30,6 @@ define([ 'store' ], function(store) {
     afterEach(function() {
       Pixy.Cache.getAdapter().clear();
       Pixy.Cache.disable();
-    });
-
-    describe('Installation', function() {
-      it('should ignore entities with no @cache key', function() {
-        var o = new Pixy.Model();
-
-        expect( o.getCacheEntry ).toBeFalsy();
-      });
-
-      it('should cache Models', function() {
-        var o = new (Pixy.Model.extend({
-          cache: {
-            key: 'spec_model'
-          }
-        }));
-
-        expect( o.getCacheEntry ).toBeTruthy();
-      });
-
-      it('should cache Collections', function() {
-        var o = new (Pixy.Collection.extend({
-          cache: {
-            key: 'spec_model'
-          }
-        }));
-
-        expect( o.getCacheEntry ).toBeTruthy();
-      });
-
-      it('should cache DeepModels', function() {
-        var o = new (Pixy.DeepModel.extend({
-          cache: {
-            key: 'spec_model'
-          }
-        }));
-
-        expect( o.getCacheEntry ).toBeTruthy();
-      });
     });
 
     describe('Configuration', function() {

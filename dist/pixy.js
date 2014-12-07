@@ -2952,13 +2952,17 @@ define('pixy/object',[
   var slice = [].slice;
 
   var initializeMixins = function() {
-    _.each(this.__mixinInitializers__, function(initializer) {
+    if (!this.__mixinInitializers__) {
+      return;
+    }
+
+    this.__mixinInitializers__.forEach(function(initializer) {
       try {
         initializer.apply(this, []);
       } catch (e) {
         console.warn('Mixin failed to initialize:', e.stack);
       }
-    }, this);
+    }.bind(this));
 
     delete this.__mixinInitializers__;
   };
@@ -2992,7 +2996,7 @@ define('pixy/object',[
 
     type = type || 'object';
 
-    Pixy.trigger(type + ':creating', this);
+    // Pixy.trigger(type + ':creating', this);
 
     initializeMixins.call(this);
 
@@ -3004,7 +3008,7 @@ define('pixy/object',[
 
     this.initialize.apply(this, attrs);
 
-    Pixy.trigger(type + ':created', this);
+    // Pixy.trigger(type + ':created', this);
 
     return this;
   };
@@ -3028,7 +3032,6 @@ define('pixy/core/dispatcher',[ 'underscore', 'rsvp', '../object' ], function(_,
   var supportedActions = [];
   var extend = _.extend;
   var actionIndex = 0;
-  var EXTRACTOR = /^([^:]+):(.*)$/;
   var handlers = {};
 
   /**
@@ -3045,7 +3048,6 @@ define('pixy/core/dispatcher',[ 'underscore', 'rsvp', '../object' ], function(_,
       var service, action;
       var storeKey, actionId;
       var promise;
-      // var fragments = (''+actionType).match(EXTRACTOR);
       var fragments = actionType.split(':');
 
       if (fragments.length === 2) {
@@ -3064,7 +3066,7 @@ define('pixy/core/dispatcher',[ 'underscore', 'rsvp', '../object' ], function(_,
       if (actionId) {
         if (supportedActions.indexOf(actionType) === -1) {
           console.assert(false, 'No action handler registered to:', actionType);
-          promise = RSVP.reject('Unknown action');
+          promise = RSVP.reject('Unknown action "' + actionId + '"');
         }
         else {
           console.debug('Dispatching targeted action "', actionId, '" with args:', action);
@@ -3072,7 +3074,10 @@ define('pixy/core/dispatcher',[ 'underscore', 'rsvp', '../object' ], function(_,
         }
       }
       else {
-        console.debug('Dispatching generic action "', actionId, '" to all stores:', action);
+        console.debug('Dispatching generic action "',
+          action.type,
+          '" to all stores:',
+          action.payload);
 
         promise = RSVP.all(callbacks.reduce(function(promises, callback) {
           return promises.concat(callback(action));
@@ -3234,156 +3239,7 @@ define('pixy/ext/react',['require','react','../mixins/react/layout_manager_mixin
 
   return React;
 });
-/*!
- * jQuery serializeObject
- * http://github.com/macek/jquery-serialize-object
- *
- * Copyright 2013 Paul Macek <paulmacek@gmail.com>
- * Released under the BSD license
- */
-define('pixy/ext/jquery/form_serializer',[ 'jquery' ], function($) {
-  var FormSerializer = function FormSerializer(helper, options) {
-    this.options   = options || {};
-    this._helper    = helper;
-    this._object    = {};
-    this._pushes    = {};
-    this._patterns  = {
-      validate: /^[a-z][a-z0-9_]*(?:\[(?:\d*|[a-z0-9_]+)\])*$/i,
-      key:      /[a-z0-9_]+|(?=\[\])/gi,
-      push:     /^$/,
-      fixed:    /^\d+$/,
-      named:    /^[a-z0-9_]+$/i
-    };
-  };
-
-  FormSerializer.prototype._convert = function _convert(value) {
-    var v = value;
-
-    if (this.options.convert) {
-      if ($.isArray(v)) {
-        v = _.map(v, function(value) {
-          return this._convert(value);
-        }, this);
-      }
-      else if ($.isNumeric(v) && !!Number(v)) {
-        return parseFloat(v, 10);
-      }
-      else if (v === 'true') {
-        return true;
-      }
-      else if (v === 'false') {
-        return false;
-      }
-    }
-
-    return v;
-  };
-
-  FormSerializer.prototype._build = function _build(base, key, value) {
-    base[key] = value;
-
-    return base;
-  };
-
-  FormSerializer.prototype._makeObject = function _nest(root, value) {
-
-    var keys = root.match(this._patterns.key), k;
-
-    // nest, nest, ..., nest
-    while ((k = keys.pop()) !== undefined) {
-      // foo[]
-      if (this._patterns.push.test(k)) {
-        var idx = this._incrementPush(root.replace(/\[\]$/, ''));
-        value = this._build([], idx, this._convert(value));
-      }
-
-      // foo[n]
-      else if (this._patterns.fixed.test(k)) {
-        value = this._build([], k, this._convert(value));
-      }
-
-      // foo; foo[bar]
-      else if (this._patterns.named.test(k)) {
-        value = this._build({}, k, this._convert(value));
-      }
-    }
-
-    return value;
-  };
-
-  FormSerializer.prototype._incrementPush = function _incrementPush(key) {
-    if (this._pushes[key] === undefined) {
-      this._pushes[key] = 0;
-    }
-    return this._pushes[key]++;
-  };
-
-  FormSerializer.prototype.addPair = function addPair(pair) {
-    if (!this._patterns.validate.test(pair.name)) return this;
-    var obj = this._makeObject(pair.name, pair.value);
-    this._object = this._helper.extend(true, this._object, obj);
-    return this;
-  };
-
-  FormSerializer.prototype.addPairs = function addPairs(pairs) {
-    var that = this;
-
-    if (!this._helper.isArray(pairs)) {
-      throw new Error("formSerializer.addPairs expects an Array");
-    }
-
-    pairs.forEach(function(pair) {
-      that.addPair(pair);
-    });
-
-    return this;
-  };
-
-  FormSerializer.prototype.serialize = function serialize() {
-    return this._object || {};
-  };
-
-  FormSerializer.prototype.serializeJSON = function serializeJSON() {
-    return JSON.stringify(this.serialize());
-  };
-
-  var Helper = function Helper(jQuery) {
-
-    // jQuery.extend requirement
-    if (typeof jQuery.extend === 'function') {
-      this.extend = jQuery.extend;
-    }
-    else {
-      throw new Error("jQuery is required to use jquery-serialize-object");
-    }
-
-    // Array.isArray polyfill
-    if(typeof Array.isArray === 'function') {
-      this.isArray = Array.isArray;
-    }
-    else {
-      this.isArray = function isArray(input) {
-        return Object.prototype.toString.call(input) === "[object Array]";
-      };
-    }
-
-  };
-
-  var helper = new Helper($ || {});
-
-  return function(options) {
-    var form = $(this);
-
-    if (form.length > 1) {
-      return new Error("jquery-serialize-object can only serialize one form at a time");
-    }
-
-    return new FormSerializer(helper, options).
-      addPairs(form.serializeArray()).
-      serialize();
-  };
-});
-define('pixy/ext/jquery',[ 'jquery', './jquery/form_serializer' ], function($, serializeObject) {
+define('pixy/ext/jquery',[ 'jquery' ], function($) {
   
 
   if ($.consume) {
@@ -3425,8 +3281,6 @@ define('pixy/ext/jquery',[ 'jquery', './jquery/form_serializer' ], function($, s
       return false;
     };
   }
-
-  $.fn.serializeObject = serializeObject;
 
   return $;
 });
@@ -8181,287 +8035,14 @@ define('pixy/util/get',[], function() {
 
   return get;
 });
-define('pixy/core/registry',[ 'underscore', '../object' ], function(_, PObject) {
-  var defineProperty = Object.defineProperty;
-
-  /**
-   * @class Pixy.Registry
-   * @extends Pixy.Object
-   *
-   * A centralized repository for managing Pixy entities arbitrarily
-   * and setting up explicit relationships between them.
-   *
-   * Entities (like Models, Collections, and Views) are added to the repository
-   * as soon as they are created, and from then on, external code can hook into
-   * the repository to manage them.
-   *
-   * Glossary:
-   *
-   *   - Entity: an object that will be used as either a module or a dependant
-   *   of a module. Entities can be anything really, not tied to Pixy
-   *   entities, however, Module entities must define a listener interface.
-   *   - Module: a *singleton* entity that can emit events, and has other
-   *   entities that depend on it
-   */
-  var Registry = PObject.extend({
-    name: 'Registry',
-    dependencies: [],
-
-    targets: [ 'model', 'collection', 'view', 'router', 'object' ],
-
-    options: {
-      mute: true
-    },
-
-    constructor: function() {
-      this.reset();
-    },
-
-    destroy: function() {
-      this.reset();
-    },
-
-    /**
-     * Register a given (singleton) entity as a Module that tracks dependencies.
-     *
-     *     Declaration format:
-     *     {
-     *       "module": "uniqueModuleName"
-     *     }
-     *
-     * @param  {String} moduleId
-     *         The module's id.
-     *
-     * @param  {Mixed} entity
-     *         The entity to be registered as a module.
-     */
-    registerModule: function(moduleId, module) {
-      var entry;
-
-      entry = this.moduleEntry(moduleId);
-      entry.module = module;
-
-      this.debug('Module defined:', entry.id);
-
-      this.resolve(entry);
-    },
-
-    /**
-     * Specify a dependency between two modules. The dependant will be assigned
-     * with a reference to the requested module once that module has been
-     * registered.
-     *
-     * Dependencies are defined in a special `requires` key.
-     *
-     *     @example
-     *
-     *     var User = Pixy.Model.extend({
-     *       module: 'user'
-     *     });
-     *
-     *     var Creature = Pixy.Model.extend({
-     *       requires: [ 'user', 'controller' ],
-     *
-     *       initialize: function() {
-     *         this.user; // => User
-     *         this.controller; // => Controller
-     *       }
-     *     });
-     *
-     * In the example above, Creature objects will be defined as dependants on
-     * the user and controller singleton modules.
-     *
-     * @param {String} moduleId A unique module id.
-     * @param {Object} entity The dependant object.
-     *
-     * @throws {Error}
-     *         If the dependant has a defined attribute named as the
-     *         moduleId but doesn't resolve to the module entity.
-     */
-    addDependency: function(moduleId, dependant) {
-      var entry;
-      var module;
-
-      entry = this.moduleEntry(moduleId);
-
-      // Track the dependant
-      entry.dependants.push(dependant);
-
-      this.debug('dependency:', '[' + dependant + '] => [' + entry.id + ']');
-
-      if (dependant.toString() === 'Router') {
-        this.debug(dependant);
-      }
-      else if (dependant.toString().match(/object/)) {
-        this.debug(dependant);
-      }
-
-      // Expose the module to the dependant:
-      //
-      // The dependant can now do things like:
-      //
-      //     this.user.doThings()
-      //
-      module = entry.module;
-
-      if (module) {
-        this.resolve(entry);
-      }
-    },
-
-    get: function(moduleId) {
-      if (!this.modules[moduleId]) {
-        return undefined;
-      }
-
-      return this.modules[moduleId].module;
-    },
-
-    /**
-     * Resolve the dependencies in a given module entry by assigning a reference
-     * to the module in each dependant.
-     *
-     * The module will be notified of each dependant in #onDependency if it
-     * implements the method.
-     *
-     * Finally, the resolved dependency will be un-tracked to free references so
-     * the GC can clean up properly.
-     *
-     * @private
-     */
-    resolve: function(entry) {
-      var moduleId = entry.id;
-      var module = entry.module;
-      var wantsCallback;
-      var resolved = [];
-      var registrationCallback = this.mkModuleId('init with ' + moduleId);
-      var that = this;
-
-      if (_.isEmpty(entry.dependants)) {
-        return [];
-      }
-
-      wantsCallback = _.isFunction(module.onDependency);
-
-      _.each(entry.dependants, function(dependant) {
-        if (dependant[moduleId] && dependant[moduleId] != module) {
-          throw moduleId + ' is already assigned in ' + dependant;
-        }
-
-        defineProperty(dependant, moduleId, {
-          get: function() {
-            return that.modules[moduleId].module;
-          }
-        });
-
-        if (dependant[registrationCallback]) {
-          dependant[registrationCallback](module);
-        }
-
-        if (wantsCallback) {
-          module.onDependency(dependant);
-        }
-
-        resolved.push(dependant.toString());
-      });
-
-      this.debug(module + ' =>', resolved.length, 'dependencies have been resolved (',
-        resolved.join(', '), ')');
-
-      // Untrack them
-      entry.dependants = [];
-
-      return resolved;
-    },
-
-    /**
-     * Parse module or dependencies declarations in a given resource.
-     *
-     * If the object contains a `module` key, then it will be registered as a
-     * module.
-     *
-     * If the object contains a `dependencies` array, then each module in that
-     * array will be tracking this resource as a dependant.
-     *
-     * @private
-     *
-     * @param  {Object} resource The object to test.
-     */
-    checkObject: function(resource) {
-      if (resource.module) {
-        this.registerModule(resource.module, resource);
-      }
-
-      if (_.isArray(resource.requires)) {
-        _.each(resource.requires, function(moduleId) {
-          this.addDependency(moduleId, resource);
-        }, this);
-      }
-    },
-
-    /**
-     * Create (or retrieve) a entry entry for a given module. These entries
-     * keep track of the module object, its id, status, dependencies,
-     * and callbacks.
-     *
-     * @private
-     *
-     * @param  {String} id
-     *         A unique module id.
-     * @param  {Object} module
-     *         The module object.
-     *
-     * @return {Object} The module entry.
-     */
-    moduleEntry: function(moduleId) {
-      var entry;
-
-      moduleId = this.mkModuleId(moduleId);
-      entry = this.modules[moduleId];
-
-      if (!entry) {
-        entry = this.modules[moduleId] = {
-          id: moduleId,
-          module: null,
-          dependants: []
-        };
-      }
-
-      return entry;
-    },
-
-    mkModuleId: function(id) {
-      if (!_.isString(id)) {
-        throw "Bad module declaration '" + JSON.stringify(id) + "' (expected a String)";
-      }
-
-      return (id || '').
-        replace(/\s/g, '_').
-        replace(/_+/g, '_').
-        underscore().
-        camelize(true);
-    },
-
-    reset: function() {
-      this.modules = {};
-    },
-
-    unregister: function(moduleId) {
-      delete this.modules[this.mkModuleId(moduleId)];
-    }
-  });
-
-  return new Registry();
-});
 define('pixy/route',[
   'underscore',
   './util/extend',
   './util/get',
   './namespace',
-  './core/registry',
   './core/router',
   './mixins/events'
-], function(_, extendPrototype, get, Pixy, Registry, Router, Events) {
+], function(_, extendPrototype, get, Pixy, Router, Events) {
   var extend = _.extend;
   var omit = _.omit;
   var pick = _.pick;
@@ -8624,7 +8205,7 @@ define('pixy/route',[
       registerRoute(name, this);
     }
 
-    Registry.checkObject(this);
+    // Registry.checkObject(this);
 
     return this;
   }
@@ -8680,12 +8261,11 @@ define('pixy/util/wrap_array',[],function() {
     return Array.isArray(array) ? array : [ array ];
   }
 });
-define('pixy/store',['require','underscore','./mixins/logger','./mixins/events','./core/dispatcher','./core/registry','./util/extend','./util/wrap_array','rsvp','inflection'],function(require) {
+define('pixy/store',['require','underscore','./mixins/logger','./mixins/events','./core/dispatcher','./util/extend','./util/wrap_array','rsvp','inflection'],function(require) {
   var _ = require('underscore');
   var Logger = require('./mixins/logger');
   var Events = require('./mixins/events');
   var Dispatcher = require('./core/dispatcher');
-  var Registry = require('./core/registry');
   var extendPrototype = require('./util/extend');
   var wrapArray = require('./util/wrap_array');
   var RSVP = require('rsvp');
@@ -8785,7 +8365,7 @@ define('pixy/store',['require','underscore','./mixins/logger','./mixins/events',
       Dispatcher.registerActionHandler(actionId, key);
     });
 
-    Registry.checkObject(this);
+    // Registry.checkObject(this);
 
     if (this.initialize) {
       this.initialize();
@@ -9722,231 +9302,6 @@ define('pixy/core/cache',[
 
   return new Cache();
 });
-define('pixy/core/mutator',[ 'underscore', '../object', '../namespace' ], function(_, PObject, Pixy) {
-  /**
-   * @class Pixy.Mutator
-   * @extends Pixy.Object
-   *
-   * A repository of object mutations that can be applied to specific types of
-   * objects, such as making them cacheable, or inheriting parent attributes.
-   */
-  var Mutator = PObject.extend({
-    name: 'Mutator',
-
-    targets: [ 'model', 'collection', 'view', 'router', 'object' ],
-
-    constructor: function() {
-      this.reset();
-      _.forEach(this.targets, this.__sniff, this);
-    },
-
-    add: function(options) {
-      options = _.extend({}, {
-        priority: 100,
-        stage: 'after'
-      }, options);
-
-      if (!_.isFunction(options.mutation)) {
-        console.error('Missing required mutation function. Options passed:', options);
-        throw 'Missing required "mutation" function';
-      }
-
-      if (!_.contains([ 'before', 'after' ], options.stage)) {
-        throw 'Invalid mutation stage "' + options.stage + '", can either be ' +
-          ' "before" or "after"';
-      }
-
-      _.each(options.targets, function(target) {
-        var set = this.mutations[options.stage][target];
-
-        if (!set) {
-          throw 'Unknown mutation target "' + target + '"';
-        }
-
-        set.push({
-          name: options.name,
-          mutation: options.mutation,
-          stage: options.stage,
-          priority: options.priority
-        });
-      }, this);
-    },
-
-    destroy: function() {
-      this.stopListening(Pixy);
-      this.reset();
-    },
-
-    reset: function() {
-      this.mutations = _.reduce(this.targets, function(mutations, target) {
-        mutations.before[target] = [];
-        mutations.after[target] = [];
-        return mutations;
-      }, { before: {}, after: {} }) || {};
-    },
-
-    __sniff: function(target) {
-      var before = this.mutations.before;
-      var after = this.mutations.after;
-
-      this.listenTo(Pixy, target + ':creating', function(object) {
-        this.__run(object, before[target], target);
-      });
-
-      this.listenTo(Pixy, target + ':created', function(object) {
-        this.__run(object, after[target], target);
-      });
-    },
-
-    __run: function(object, mutations, objectType) {
-      var that = this;
-
-      // console.info("Applying", mutations.length, "mutations on", object);
-      _.chain(mutations).sortBy('priority').each(function(entry) {
-        try {
-          entry.mutation(object, objectType);
-        } catch(e) {
-          that.warn('Exception caught in mutation "' + entry.name + '":');
-          console.error(e.stack || e.message);
-        }
-      });
-    }
-  });
-
-  return new Mutator();
-});
-define('pixy/util/inherit',[ 'underscore' ], function(_) {
-  var inheritArrayAttribute = function(object, key, value) {
-    var parent = Object.getPrototypeOf(object);
-    var objectValue;
-
-    value = value || [];
-
-    if (parent) {
-      value = inheritArrayAttribute(parent, key, value);
-    }
-
-    // Avoid null/undefined values
-    objectValue = _.result(object, key);
-
-    if (objectValue) {
-      value = _.union(value, objectValue);
-    }
-
-    return value;
-  };
-
-  var inheritAttribute = function(object, key, value) {
-    var parent = Object.getPrototypeOf(object);
-
-    value = value || {};
-
-    if (parent) {
-      inheritAttribute(parent, key, value);
-    }
-
-    _.merge(value, _.result(object, key));
-
-    return value;
-  };
-
-  return function(object, key, dontOverride, isArray) {
-    var options;
-    var inherited;
-
-    if (_.isObject(dontOverride)) {
-      options = dontOverride;
-    }
-    else {
-      // legacy compat.
-      options = {
-        dontOverride: dontOverride,
-        isArray: isArray
-      };
-    }
-
-    inherited = options.isArray ?
-      inheritArrayAttribute(object, key, []) :
-      inheritAttribute(object, key, {});
-
-    if (!options.dontOverride) {
-      object[key] = inherited;
-    }
-
-    return inherited;
-  };
-});
-define('pixy/mutations/attribute_inheritance',[ 'underscore', '../util/inherit' ], function(_, Inherit) {
-  
-
-  /**
-   * @class Backbone.Plugin.Inherits
-   * @extends Backbone.Plugin
-   *
-   * Enables inheritance of attributes for any Backbone resource.
-   */
-  return {
-    stage: 'before',
-    targets: [ 'model', 'view', 'collection', 'router' ],
-    priority: 1,
-    mutation: function(resource) {
-      var chain = Inherit(resource, 'inherits', true, true);
-
-      if (chain && chain.length) {
-        _.each(chain, function(attr) {
-          var isArray = attr[0] == '@';
-
-          if (isArray) {
-            attr = attr.substr(1);
-          }
-
-          Inherit(resource, attr, false, isArray);
-        });
-      }
-    }
-  };
-});
-define('pixy/mutations/caching',[ 'underscore', '../core/cache' ], function(_, Cache) {
-  
-
-  /**
-   * @class Backbone.Plugin.Inherits
-   * @extends Backbone.Plugin
-   *
-   * Enables inheritance of attributes for any Backbone resource.
-   */
-  return {
-    stage: 'before',
-    targets: [ 'model', 'collection' ],
-    priority: 100,
-    mutation: function(resource) {
-      // Cache-enabled objects must have a 'cache' object defined.
-      if (!_.isObject(resource.cache)) {
-        return;
-      }
-
-      Cache.makeCacheable(resource);
-    }
-  };
-});
-define('pixy/mutations/registration',[ '../core/registry' ], function(Registry) {
-  
-
-  /**
-   * @class Backbone.Plugin.Inherits
-   * @extends Backbone.Plugin
-   *
-   * Enables inheritance of attributes for any Backbone resource.
-   */
-  return {
-    stage: 'after',
-    priority: 100,
-    targets: [ 'model', 'collection', 'view', 'router', 'object' ],
-    mutation: function(resource) {
-      Registry.checkObject(resource);
-    }
-  };
-});
 define('pixy/mixins/filterable_collection',[
   'underscore',
   '../collection',
@@ -9973,21 +9328,6 @@ define('pixy/mixins/filterable_collection',[
     }
   });
 
-  var initialize = function() {
-    _.extend(this, {
-      _filters: new Collection({ model: Filter }),
-      _fmodels: []
-    });
-
-    this.filterOptions = this.filterOptions || {};
-
-    _.defaults(this.filterOptions, {
-      resetOn: 'fetch reset'
-    });
-
-    this.on(this.filterOptions.resetOn, this.resetFilters, this);
-    this.resetFilters();
-  };
 
   /**
    * @class Backbone.Filterable
@@ -9996,6 +9336,21 @@ define('pixy/mixins/filterable_collection',[
    * Backbone.Collection add-on that enables soft-filtering of a collection's models.
    */
   var Filterable = {
+    __initialize__: function() {
+      _.extend(this, {
+        _filters: new Collection({ model: Filter }),
+        _fmodels: []
+      });
+
+      this.filterOptions = this.filterOptions || {};
+
+      _.defaults(this.filterOptions, {
+        resetOn: 'fetch reset'
+      });
+
+      this.on(this.filterOptions.resetOn, this.resetFilters, this);
+      this.resetFilters();
+    },
 
     /**
      * Define a new attribute filter.
@@ -10194,10 +9549,7 @@ define('pixy/mixins/filterable_collection',[
     }
   };
 
-  return function(collection) {
-    _.extend(collection, Filterable);
-    initialize.apply(collection, []);
-  };
+  return Filterable;
 });
 define('pixy/mixins/routes/access_policy',[ '../../config', 'rsvp' ], function(Config, RSVP) {
   var RC_PASS = void 0;
@@ -10753,15 +10105,36 @@ define('pixy/mixins/react',['require','./react/layout_manager_mixin','./react/la
 
   return exports;
 });
-define('pixy/mixins',['require','./mixins/routes','./mixins/react'],function(require) {
+define('pixy/mixins/cacheable',['require','../core/cache'],function(require) {
+  var Cache = require('../core/cache');
+
+  /**
+   * @class Pibi.Mixins.Cacheable
+   *
+   * Makes a Model or a Collection automatically cacheable to localStorage.
+   */
+  return {
+    __initialize__: function() {
+      if (!this.cache) {
+        throw new Error("Cacheable resource must define a #cache property.");
+      }
+
+      Cache.makeCacheable(this);
+    }
+  };
+});
+
+define('pixy/mixins',['require','./mixins/routes','./mixins/react','./mixins/filterable_collection','./mixins/cacheable'],function(require) {
   var exports = {};
 
   exports.Routes = require('./mixins/routes');
   exports.React = require('./mixins/react');
+  exports.FilterableCollection = require('./mixins/filterable_collection');
+  exports.Cacheable = require('./mixins/cacheable');
 
   return exports;
 });
-define('pixy/main',['require','underscore','inflection','rsvp','./ext/react','./ext/jquery','router','./namespace','./object','./model','./deep_model','./collection','./core/router','./route','./store','./logging_context','./core/registry','./core/cache','./core/dispatcher','./core/mutator','./mutations/attribute_inheritance','./mutations/caching','./mutations/registration','./mixins/filterable_collection','./mixins/logger','./mixins'],function(require) {
+define('pixy/main',['require','underscore','inflection','rsvp','./ext/react','./ext/jquery','router','./namespace','./object','./model','./deep_model','./collection','./core/router','./route','./store','./logging_context','./core/cache','./core/dispatcher','./mixins/filterable_collection','./mixins/logger','./mixins'],function(require) {
   var _ = require('underscore');
   var InflectionJS = require('inflection');
   var RSVP = require('rsvp');
@@ -10777,13 +10150,8 @@ define('pixy/main',['require','underscore','inflection','rsvp','./ext/react','./
   var PixyRoute = require('./route');
   var PixyStore = require('./store');
   var PixyLoggingContext = require('./logging_context');
-  var PixyRegistry = require('./core/registry');
   var PixyCache = require('./core/cache');
   var PixyDispatcher = require('./core/dispatcher');
-  var PixyMutator = require('./core/mutator');
-  var AttributeInheritanceMutation = require('./mutations/attribute_inheritance');
-  var CachingMutation = require('./mutations/caching');
-  var RegistrationMutation = require('./mutations/registration');
   var FilterableCollection = require('./mixins/filterable_collection');
   var PixyLogger = require('./mixins/logger');
   var Mixins = require('./mixins');
@@ -10798,15 +10166,15 @@ define('pixy/main',['require','underscore','inflection','rsvp','./ext/react','./
   Pixy.LoggingContext = PixyLoggingContext;
 
   // Singletons
-  Pixy.Mutator = PixyMutator;
-  Pixy.Registry = PixyRegistry;
+  // Pixy.Mutator = PixyMutator;
+  // Pixy.Registry = PixyRegistry;
   Pixy.Cache = PixyCache;
   Pixy.Dispatcher = PixyDispatcher;
   Pixy.ApplicationRouter = PixyRouter;
 
-  Pixy.Mutator.add(AttributeInheritanceMutation);
-  Pixy.Mutator.add(CachingMutation);
-  Pixy.Mutator.add(RegistrationMutation);
+  // Pixy.Mutator.add(AttributeInheritanceMutation);
+  // Pixy.Mutator.add(CachingMutation);
+  // Pixy.Mutator.add(RegistrationMutation);
 
   Pixy.Mixins = Mixins;
 
