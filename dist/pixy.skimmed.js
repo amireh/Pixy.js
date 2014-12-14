@@ -819,7 +819,7 @@ define('pixy/namespace',[
   }
 
   // Current version of the library. Keep in sync with `package.json`.
-  Pixy.VERSION = '2.0.0';
+  Pixy.VERSION = '2.1.0';
 
   Pixy.sync = _.bind(sync, Pixy);
   Pixy.$ = $;
