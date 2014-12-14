@@ -3028,8 +3028,6 @@ define('pixy/object',[
 });
 
 define('pixy/core/dispatcher',[ 'underscore', 'rsvp', '../object' ], function(_, RSVP, PObject) {
-  var callbacks = [];
-  var supportedActions = [];
   var extend = _.extend;
   var actionIndex = 0;
   var handlers = {};
@@ -3050,10 +3048,8 @@ define('pixy/core/dispatcher',[ 'underscore', 'rsvp', '../object' ], function(_,
       var promise;
       var fragments = actionType.split(':');
 
-      if (fragments.length === 2) {
-        storeKey = fragments[0];
-        actionId = fragments[1];
-      }
+      storeKey = fragments[0];
+      actionId = fragments[1];
 
       action = extend({}, options, {
         id: actionId,
@@ -3063,25 +3059,13 @@ define('pixy/core/dispatcher',[ 'underscore', 'rsvp', '../object' ], function(_,
         payload: payload
       });
 
-      if (actionId) {
-        if (supportedActions.indexOf(actionType) === -1) {
-          console.assert(false, 'No action handler registered to:', actionType);
-          promise = RSVP.reject('Unknown action "' + actionId + '"');
-        }
-        else {
-          console.debug('Dispatching targeted action "', actionId, '" with args:', action);
-          promise = handlers[storeKey](action);
-        }
+      if (!handlers.hasOwnProperty(storeKey)) {
+        console.assert(false, 'No action handler registered to:', actionType);
+        promise = RSVP.reject('Unknown action "' + actionId + '"');
       }
       else {
-        console.debug('Dispatching generic action "',
-          action.type,
-          '" to all stores:',
-          action.payload);
-
-        promise = RSVP.all(callbacks.reduce(function(promises, callback) {
-          return promises.concat(callback(action));
-        }, []));
+        console.debug('Dispatching targeted action "', actionId, '" with args:', action);
+        promise = handlers[storeKey](action);
       }
 
       service = {
@@ -3094,15 +3078,7 @@ define('pixy/core/dispatcher',[ 'underscore', 'rsvp', '../object' ], function(_,
       return service;
     },
 
-    register: function(callback) {
-      callbacks.push(callback);
-    },
-
-    registerActionHandler: function(action, key) {
-      supportedActions.push([ key , action ].join(':'));
-    },
-
-    registerHandler: function(key, handler) {
+    register: function(key, handler) {
       handlers[key] = handler;
     }
 
@@ -3153,10 +3129,21 @@ define('pixy/mixins/react/actor_mixin',['require','../../core/dispatcher'],funct
      * @param  {RSVP.Promise} service
      */
     trackAction: function(service) {
+      var setState = this.setState.bind(this);
+
       this.lastAction = service.promise;
 
-      this.setState({
+      setState({
         actionIndex: service.index
+      });
+
+      service.promise.then(null, function(error) {
+        setState({
+          storeError: {
+            actionIndex: service.index,
+            error: error
+          }
+        });
       });
     },
 
@@ -3199,25 +3186,11 @@ define('pixy/mixins/react/actor_mixin',['require','../../core/dispatcher'],funct
      *         an error that adheres to the UIError interface.
      */
     sendAction: function(action, params, options) {
-      var setState = this.setState.bind(this);
-      var service = Dispatcher.dispatch(action, params, {
-        source: 'VIEW_ACTION'
-      });
+      var service = Dispatcher.dispatch(action, params);
 
-      if (options && options.track === false) {
-        return;
+      if (!options || options.track !== false) {
+        this.trackAction(service);
       }
-
-      this.trackAction(service);
-
-      service.promise.then(null, function(error) {
-        setState({
-          storeError: {
-            actionIndex: service.index,
-            error: error
-          }
-        });
-      });
 
       return service.promise;
     }
@@ -8256,84 +8229,71 @@ define('pixy/route',[
 
   return Route;
 });
-define('pixy/util/wrap_array',[],function() {
-  return function wrapArray(array) {
-    return Array.isArray(array) ? array : [ array ];
-  }
-});
-define('pixy/store',['require','underscore','./mixins/logger','./mixins/events','./core/dispatcher','./util/extend','./util/wrap_array','rsvp','inflection'],function(require) {
+define('pixy/store',['require','underscore','./mixins/logger','./mixins/events','./core/dispatcher','./util/extend','rsvp'],function(require) {
   var _ = require('underscore');
   var Logger = require('./mixins/logger');
   var Events = require('./mixins/events');
   var Dispatcher = require('./core/dispatcher');
   var extendPrototype = require('./util/extend');
-  var wrapArray = require('./util/wrap_array');
   var RSVP = require('rsvp');
-  var InflectionJS = require('inflection');
 
   var extend = _.extend;
-  var keys = _.keys;
   var CHANGE_EVENT = 'change';
-  var ACTION_SUCCESS_EVENT = 'actionSuccess';
-  var ACTION_ERROR_EVENT = 'actionError';
   var RESPONSE_JSON = 'responseJSON';
 
-  function actionSuccessEventName(action) {
-    if (!action) {
-      return undefined;
-    }
-
-    return [ ACTION_SUCCESS_EVENT, action ].join(':');
+  function onChange(resolve, attr, value) {
+    this.emitChange(attr, value);
+    resolve(arguments.length === 2 ? value : attr);
   }
 
-  function actionErrorEventName(action) {
-    if (!action) {
-      return undefined;
+  function onError(reject, error) {
+    if (error && _.isObject(error) && RESPONSE_JSON in error) {
+      error = error.responseJSON;
     }
 
-    return [ ACTION_ERROR_EVENT, action ].join(':');
+    reject(error);
   }
 
-  function onPayload(action) {
-    var handler;
-
-    if (action.storeKey === this._key) {
-      handler = this.actions[action.id];
+  /**
+   * @internal
+   *
+   * @note This is automatically generated for you and passed as an argument
+   *       to #onAction.
+   *
+   * @param {Object} action
+   *        The action specification.
+   *
+   * @param {String} action.type (required)
+   *        Unique name of the action.
+   *
+   * @param {Integer} action.index (required)
+   *        Action instance identifier as generated by the dispatcher.
+   *
+   * @return {Function}
+   *         An "onError" function to pass to your action handler so that it
+   *         calls it if it couldn't process the action.
+   *
+   *         The callback receives a single argument which should be an object
+   *         describing your error.
+   *
+   *         The callback will emit the appropate action error.
+   */
+  function onAction(action) {
+    if (!this.actions.hasOwnProperty(action.id)) {
+      return RSVP.reject("Unknown action '" + action.id + "'");
     }
 
     return new RSVP.Promise(function(resolve, reject) {
-      var onChange = this._actionEmitter(action, resolve);
-      var onError = this._errorPropagator(action, reject);
+      var _onChange = onChange.bind(this, resolve);
+      var _onError = onError.bind(null, reject);
 
-      if (handler) {
-        try {
-          handler.call(this, action.payload, onChange, onError);
-        } catch(error) {
-          onError(error);
-        }
+      try {
+        this.actions[action.id].call(this, action.payload, _onChange, _onError);
       }
-      else {
-        this.onAction(action.type, action.payload, onChange, onError);
-        resolve();
+      catch(error) {
+        onError(error);
       }
-
     }.bind(this));
-  }
-
-  function bind(store, event, callback, context) {
-    if (context && context.listenTo) {
-      context.listenTo(store, event, callback);
-    } else {
-      store.on(event, callback, context);
-    }
-  }
-
-  function unbind(store, event, callback, context) {
-    if (context && context.listenTo) {
-      context.stopListening(store, event, callback);
-    } else {
-      store.off(event, callback, context);
-    }
   }
 
   /**
@@ -8342,30 +8302,13 @@ define('pixy/store',['require','underscore','./mixins/logger','./mixins/events',
    * An implementation of the Flux Data Store objects.
    */
   var Store = function(name, schema) {
-    var key;
-    var onAction = onPayload.bind(this);
-
     extend(this, schema, {
       name: name
     });
 
     this.reset();
 
-    if (!this._key) {
-      key = this._key = name.underscore().replace(/_store$/, '').pluralize().camelize(true);
-    }
-    else {
-      key = this._key;
-    }
-
-    Dispatcher.register(onAction);
-    Dispatcher.registerHandler(key, onAction);
-
-    keys(this.actions).forEach(function(actionId) {
-      Dispatcher.registerActionHandler(actionId, key);
-    });
-
-    // Registry.checkObject(this);
+    Dispatcher.register(name, onAction.bind(this));
 
     if (this.initialize) {
       this.initialize();
@@ -8390,159 +8333,26 @@ define('pixy/store',['require','underscore','./mixins/logger','./mixins/events',
       this.trigger(CHANGE_EVENT);
     },
 
-    emitActionSuccess: function(action, actionIndex) {
-      this.debug('Broadcasting action success:', action);
-      this.trigger(actionSuccessEventName(action), actionIndex, action);
-      this.trigger(ACTION_SUCCESS_EVENT, action, actionIndex);
-    },
-
-    /**
-     * Notify subscribers that an error was raised performing a specific store
-     * action.
-     *
-     * @param  {String} action
-     *         Name of the action in which the error was raisde.
-     *
-     * @param  {Integer} actionIndex
-     *         The action index generated by the dispatcher.
-     *
-     * @param  {Object} error
-     *         The error.
-     */
-    emitActionError: function(action, actionIndex, error) {
-      this.warn('Broadcasting action error:', action, '#', actionIndex);
-      this.warn(error, (error && error.stack ? error.stack : undefined));
-
-      this.trigger(actionErrorEventName(action), actionIndex, error);
-      this.trigger(ACTION_ERROR_EVENT, action, actionIndex, error);
-    },
-
     /**
      * @param {function} callback
      */
     addChangeListener: function(callback, thisArg) {
-      bind(this, CHANGE_EVENT, callback, thisArg);
+      if (thisArg && thisArg.listenTo) {
+        thisArg.listenTo(this, CHANGE_EVENT, callback);
+      } else {
+        this.on(CHANGE_EVENT, callback, thisArg);
+      }
     },
 
     /**
      * @param {function} callback
      */
     removeChangeListener: function(callback, thisArg) {
-      unbind(this, CHANGE_EVENT, callback, thisArg);
-    },
-
-    /**
-     * Register an action success handler for a specific store action.
-     *
-     * @param {String}   action
-     * @param {Function} callback
-     */
-    addActionSuccessListener: function(actions, callback, thisArg) {
-      var that = this;
-      wrapArray(actions).forEach(function(action) {
-        bind(that, actionSuccessEventName(action), callback, thisArg);
-      });
-    },
-
-    removeActionSuccessListener: function(action, callback, thisArg) {
-      unbind(this, actionSuccessEventName(action), callback, thisArg);
-    },
-
-    /**
-     * Register an error handler for a specific store action.
-     *
-     * @param {String}   action
-     *        A specific action to listen to for errors. Errors caused in other
-     *        actions will not be dispatched to your callback.
-     *
-     * @param {Function} callback
-     */
-    addActionErrorListener: function(action, callback, thisArg) {
-      bind(this, actionErrorEventName(action), callback, thisArg);
-    },
-
-    removeActionErrorListener: function(action, callback, thisArg) {
-      unbind(this, actionErrorEventName(action), callback, thisArg);
-    },
-
-    /**
-     * Register an error handler to be called on any store action error.
-     *
-     * @param {Function} callback
-     */
-    addErrorListener: function(callback, thisArg) {
-      bind(this, ACTION_ERROR_EVENT, callback, thisArg);
-    },
-
-    removeErrorListener: function(callback, thisArg) {
-      unbind(this, ACTION_ERROR_EVENT, callback, thisArg);
-    },
-
-    /**
-     * @protected
-     *
-     * Dispatcher callback for this store. This is where you receive the payload
-     * from the dispatcher and get a chance to handle the action if you know how
-     * to.
-     *
-     * @param  {String} action
-     *         Unique action id. Usually identified by a constant.
-     *
-     * @param  {Object} payload
-     *         Action-specific parameters.
-     *
-     * @param {Function} onError
-     *        Call this if your handler was unable to process the action.
-     *        See #_errorPropagator for more information.
-     */
-    onAction: function(/*action, payload, onError*/) {
-    },
-
-    /**
-     * @private
-     *
-     * @note This is automatically generated for you and passed as an argument
-     *       to #onAction.
-     *
-     * @param {Object} action
-     *        The action specification.
-     *
-     * @param {String} action.type (required)
-     *        Unique name of the action.
-     *
-     * @param {Integer} action.index (required)
-     *        Action instance identifier as generated by the dispatcher.
-     *
-     * @return {Function}
-     *         An "onError" function to pass to your action handler so that it
-     *         calls it if it couldn't process the action.
-     *
-     *         The callback receives a single argument which should be an object
-     *         describing your error.
-     *
-     *         The callback will emit the appropate action error.
-     */
-    _errorPropagator: function(action, reject) {
-      return function(error) {
-        if (error && _.isObject(error) && RESPONSE_JSON in error) {
-          error = error.responseJSON;
-        }
-
-        this.emitActionError(action.type, action.index, error);
-        reject(error);
-      }.bind(this);
-    },
-
-    _actionEmitter: function(action, resolve) {
-      return function(attr, value) {
-        this.emitActionSuccess(action.type, action.index);
-        this.emitChange(attr, value);
-        resolve(arguments.length === 2 ? value : attr);
-      }.bind(this);
-    },
-
-    toString: function() {
-      return this.name;
+      if (thisArg && thisArg.listenTo) {
+        thisArg.stopListening(this, CHANGE_EVENT, callback);
+      } else {
+        this.off(CHANGE_EVENT, callback, thisArg);
+      }
     },
 
     reset: function() {

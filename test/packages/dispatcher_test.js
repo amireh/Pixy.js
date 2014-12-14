@@ -9,7 +9,7 @@ require([ 'pixy/core/dispatcher', 'rsvp' ], function(Dispatcher, RSVP) {
         var callback = function(payload) {};
 
         expect(function() {
-          Dispatcher.register(callback);
+          Dispatcher.register('someStore', callback);
         }).not.toThrow();
       });
     });
@@ -20,23 +20,14 @@ require([ 'pixy/core/dispatcher', 'rsvp' ], function(Dispatcher, RSVP) {
       it('should invoke callbacks with a payload', function() {
         var callback = sinon.stub();
 
-        Dispatcher.register(callback);
-        Dispatcher.dispatch('someAction', {
+        Dispatcher.register('someStore', callback);
+        Dispatcher.dispatch('someStore:someAction', {
           foo: 'bar'
         });
 
         this.flush();
 
         expect(callback.called).toBeTruthy();
-      });
-
-      xit('should reject a non-camelized action', function() {
-        var callback = sinon.stub();
-
-        Dispatcher.register(callback);
-        Dispatcher.dispatch('some_action').promise.shouldReject(function() {
-          expect(callback.called).toBeFalsy();
-        }).andWait('Payload to be dispatched');
       });
     });
   });
